@@ -1,51 +1,139 @@
 using UnityEngine;
+using System.Collections;
 
 [RequireComponent(typeof(CharacterController))]
 public class PlayerMovement : MonoBehaviour
 {
     public CharacterController controller;
-    public Transform cameraTransform; // Reference to the CameraController's transform (or its parent object if needed)
-    public float speed = 5f;
+    public Transform cameraTransform;
+    public float walkSpeed = 5f;
+    public float sprintMultiplier = 1.5f;
+    public float jumpHeight = 1.5f;
     public float gravity = -9.81f;
-    public float jumpHeight = 1.5f; // (Optional, if jumping is needed)
 
     private Vector3 velocity;
+    private bool isGrounded;
+
+    public Animator animator;
+
+    private bool isSliding = false;
+    public float slideSpeedMultiplier = 1.5f; 
+    public float slideDuration = 1.0335f;
 
     void Start()
     {
         controller = GetComponent<CharacterController>();
+        animator = GetComponent<Animator>();
     }
 
     void Update()
     {
-        // Get input for horizontal movement
-        float moveX = Input.GetAxis("Horizontal");
-        float moveZ = Input.GetAxis("Vertical");
+        isGrounded = controller.isGrounded;
+        if (isGrounded && velocity.y < 0)
+        {
+            velocity.y = -2f;
+            animator.SetBool("IsJumping", false);
+            animator.SetBool("SprintJump", false);
+        }
 
-        // Get camera forward and right vectors, but ignore the y component
+        if (isGrounded && !isSliding)
+        {
+            if (Input.GetKeyDown(KeyCode.LeftControl))
+            {
+                StartCoroutine(Slide());
+                return; 
+            }
+        }
+
+        if (isSliding)
+        {
+            Gravity();
+            return;
+        }
+
+        float horizontal = Input.GetAxis("Horizontal");
+        float vertical = Input.GetAxis("Vertical");
+        Vector3 inputDir = new Vector3(horizontal, 0f, vertical);
+
         Vector3 camForward = cameraTransform.forward;
         camForward.y = 0;
         camForward.Normalize();
-
         Vector3 camRight = cameraTransform.right;
         camRight.y = 0;
         camRight.Normalize();
 
-        // Determine movement direction relative to the camera
-        Vector3 moveDirection = camForward * moveZ + camRight * moveX;
-        moveDirection.Normalize();
+        Vector3 moveDir = (camForward * vertical + camRight * horizontal);
+        float inputMagnitude = moveDir.magnitude;
 
-        // Move the player using the CharacterController
-        controller.Move(moveDirection * speed * Time.deltaTime);
+        animator.SetBool("IsSprinting", false);
 
-        // Gravity (if needed)
-        if (controller.isGrounded && velocity.y < 0)
+        bool isWalking = inputDir.magnitude > 0.001f && velocity.y < 0;
+        animator.SetBool("IsWalking", isWalking);
+
+        if (inputMagnitude > 0.1f)
         {
-            velocity.y = -2f; // Ensure a slight downward force keeps the player grounded
+            Quaternion targetRotation = Quaternion.LookRotation(moveDir);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 0.15f);
         }
+        else
+        {
+            Vector3 camFwd = cameraTransform.forward;
+            camFwd.y = 0;
+            if (camFwd.sqrMagnitude > 0.001f)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(camFwd);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 0.1f);
+            }
+        }
+
+        float currentSpeed = walkSpeed;
+        if (Input.GetKey(KeyCode.LeftShift))
+        {
+            currentSpeed *= sprintMultiplier;
+            animator.SetBool("IsSprinting", true);
+        }
+
+        controller.Move(moveDir.normalized * currentSpeed * Time.deltaTime);
+
+        if (Input.GetButtonDown("Jump") && isGrounded)
+        {
+            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            if (animator.GetBool("IsSprinting"))
+            {
+                animator.SetBool("SprintJump", true);
+            }
+            else
+            {
+                animator.SetBool("IsJumping", true);
+            }
+        }
+
+        Gravity();
+    }
+
+    void Gravity()
+    {
         velocity.y += gravity * Time.deltaTime;
         controller.Move(velocity * Time.deltaTime);
+    }
 
-        // Optional: jump logic can be added here if desired
+    IEnumerator Slide()
+    {
+        isSliding = true;
+        animator.SetBool("IsSliding", true);
+        
+        float timer = 0f;
+        Vector3 slideDir = transform.forward;
+        float slideSpeed = walkSpeed * slideSpeedMultiplier;
+        
+        while (timer < slideDuration)
+        {
+            controller.Move(slideDir * slideSpeed * Time.deltaTime);
+            timer += Time.deltaTime;
+            yield return null;
+        }
+        
+        animator.SetBool("IsSliding", false);
+        isSliding = false;
     }
 }
