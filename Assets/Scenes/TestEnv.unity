@@ -616,6 +616,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 18ebdad9b6c21ee41bb983a73ee68e91, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2078998434}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 18ebdad9b6c21ee41bb983a73ee68e91, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2078998436}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 18ebdad9b6c21ee41bb983a73ee68e91, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2078998435}
   m_SourcePrefab: {fileID: 100100000, guid: 18ebdad9b6c21ee41bb983a73ee68e91, type: 3}
 --- !u!1 &2078998432 stripped
 GameObject:
@@ -672,6 +678,50 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!95 &2078998435
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2078998432}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: ae78447f9836377498ecf0b46f3f415a, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &2078998436
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2078998432}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3cddaf981adfd2d45bc8a13c3f387b47, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  player: {fileID: 2089580569}
+  animator: {fileID: 2078998435}
+  aggroRange: 20
+  maintainDistance: 5
+  attackRange: 3
+  moveSpeed: 3
+  wanderStrength: 0.5
+  wanderSpeed: 1
+  attackCooldownMin: 3
+  attackCooldownMax: 6
 --- !u!1001 &2089580567
 PrefabInstance:
   m_ObjectHideFlags: 0

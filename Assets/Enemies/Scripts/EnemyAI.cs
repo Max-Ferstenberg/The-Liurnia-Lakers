@@ -5,22 +5,22 @@ using System.Collections;
 public class EnemyAI : MonoBehaviour
 {
     // References
-    public Transform player;             // Assign the player's transform in the Inspector (or tag the player and find it at Start)
+    public Transform player;             // Assign the player's transform in the Inspector (or find by tag)
     public Animator animator;            // The Animator controlling enemy animations
 
     // Aggro and distance parameters
-    public float aggroRange = 20f;       // The enemy becomes active when the player is within this range
-    public float maintainDistance = 5f;  // The enemy will try to stop moving forward when it gets within this distance
-    public float attackRange = 3f;       // For attacking, enemy wants to get this close
+    public float aggroRange = 10f;       // The enemy becomes active when the player is within this range
+    public float maintainDistance = 3f;  // The enemy will try to stop moving forward when it gets within this distance
+    public float attackRange = 0.2f;       // For attacking, enemy wants to get this close
 
     // Movement parameters
-    public float moveSpeed = 3f;         // Base movement speed when pursuing
-    public float wanderStrength = 0.5f;  // Controls the amplitude of the side-to-side oscillation
-    public float wanderSpeed = 1f;       // Controls how quickly the oscillation happens
+    public float moveSpeed = 5f;         // Base movement speed when pursuing
+    public float wanderStrength = 0.5f;  // Amplitude of side-to-side oscillation
+    public float wanderSpeed = 1f;       // Frequency of oscillation
 
     // Attack parameters
-    public float attackCooldownMin = 3f; // Minimum time between attacks
-    public float attackCooldownMax = 6f; // Maximum time between attacks
+    public float attackCooldownMin = 6f; // Minimum time between attacks
+    public float attackCooldownMax = 10f; // Maximum time between attacks
     private float attackTimer = 0f;      // Timer to count down until next attack
 
     // Internal state management
@@ -32,6 +32,9 @@ public class EnemyAI : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody>();
+        // Freeze X and Z rotations so the enemy stays upright.
+        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        
         if (player == null)
         {
             GameObject p = GameObject.FindGameObjectWithTag("Player");
@@ -39,7 +42,6 @@ public class EnemyAI : MonoBehaviour
                 player = p.transform;
         }
         
-        // Start in Idle; attack timer is set
         currentState = State.Idle;
         ResetAttackTimer();
     }
@@ -48,37 +50,35 @@ public class EnemyAI : MonoBehaviour
     {
         float distanceToPlayer = Vector3.Distance(transform.position, player.position);
 
-        // If the player is within aggro range, switch to pursuing state.
+        // If the player is within aggro range, switch from Idle to Pursuing.
         if (distanceToPlayer <= aggroRange)
         {
-            if (currentState == State.Idle)
-            {
+            if (currentState == State.Idle){
                 currentState = State.Pursuing;
+                animator.SetBool("IsWalking", true);
             }
         }
         else
         {
             currentState = State.Idle;
+            animator.SetBool("IsWalking", false);
         }
 
-        // Only pursue/attack if in an active state.
+        // While Pursuing, count down to the next attack.
         if (currentState == State.Pursuing)
         {
-            // Decrease attack timer while pursuing.
             attackTimer -= Time.deltaTime;
             if (attackTimer <= 0f)
             {
-                // Switch to attack state.
                 currentState = State.Attacking;
                 isAttacking = true;
             }
         }
 
-        // Handle behavior based on state.
+        // State-based behavior:
         switch (currentState)
         {
             case State.Idle:
-                // Optionally, have idle behavior here (or simply zero velocity).
                 rb.linearVelocity = Vector3.zero;
                 break;
 
@@ -94,68 +94,69 @@ public class EnemyAI : MonoBehaviour
 
     void PursuePlayer(float distanceToPlayer)
     {
-        // If the enemy is too far (greater than maintainDistance), pursue the player with some non-linear "wander".
+        // When far away, move toward the player with a wavy (oscillatory) path.
         if (distanceToPlayer > maintainDistance)
         {
-            // Basic direction toward player.
+            // Direct vector to the player.
             Vector3 direction = (player.position - transform.position).normalized;
-
-            // Compute a wander (oscillatory) offset perpendicular to the direction.
+            // Compute a perpendicular vector (to add a sine-based oscillation).
             Vector3 perp = Vector3.Cross(direction, Vector3.up);
-            // Use a sine wave (based on time) for a smooth oscillation.
             float wanderOffset = Mathf.Sin(Time.time * wanderSpeed) * wanderStrength;
             Vector3 offset = perp * wanderOffset;
-
-            // Combine direction and offset and normalize.
             Vector3 targetDir = (direction + offset).normalized;
 
-            // Smoothly rotate to face target direction.
+            // Smoothly rotate to face the target direction.
             if (targetDir != Vector3.zero)
             {
                 Quaternion targetRotation = Quaternion.LookRotation(targetDir);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 0.1f);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 0.2f);
             }
 
             rb.linearVelocity = targetDir * moveSpeed;
         }
         else
         {
-            // Within maintainDistance: hold position (or optionally circle the player)
+            // Within maintainDistance, stop moving.
             rb.linearVelocity = Vector3.zero;
         }
     }
 
     void AttackPlayer(float distanceToPlayer)
     {
-        // In the attack state, if the enemy isn't close enough, move in toward the player.
+        // Always smoothly face the player while attacking.
+        Vector3 directionToPlayer = (player.position - transform.position).normalized;
+        if (directionToPlayer != Vector3.zero)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(directionToPlayer);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 0.2f);
+        }
+
+        // If not within attack range, approach the player.
         if (distanceToPlayer > attackRange)
         {
-            Vector3 direction = (player.position - transform.position).normalized;
-            rb.linearVelocity = direction * moveSpeed;
+            rb.linearVelocity = directionToPlayer * moveSpeed;
         }
         else
         {
-            // Once in attack range, stop moving and trigger an attack.
+            // Once close enough, stop moving.
             rb.linearVelocity = Vector3.zero;
-            StartCoroutine(PerformAttack());
+
+            // Begin attack only once.
+            if (isAttacking)
+            {
+                StartCoroutine(PerformAttack());
+            }
         }
     }
 
     IEnumerator PerformAttack()
     {
-        // Only allow one attack at a time.
-        if (!isAttacking)
-            yield break;
-
-        // Randomly select one of three attacks with equal probability.
-        int attackChoice = Random.Range(1, 4); // returns 1, 2, or 3
+        // Randomly select one of three attack triggers.
+        int attackChoice = Random.Range(1, 4); // 1, 2, or 3
         animator.SetTrigger("Attack" + attackChoice);
+        yield return new WaitForSeconds(0.01f);
 
-        // Wait for the attack animation to finish.
-        // (You might use the actual length of your attack animation here; we'll assume 1 second for this example.)
-        yield return new WaitForSeconds(1f);
-
-        // Reset the attack state.
+        // After attacking, reset the attack timer and return to pursuing.
         isAttacking = false;
         ResetAttackTimer();
         currentState = State.Pursuing;
@@ -163,7 +164,6 @@ public class EnemyAI : MonoBehaviour
 
     void ResetAttackTimer()
     {
-        // Randomly choose the next attack interval.
         attackTimer = Random.Range(attackCooldownMin, attackCooldownMax);
     }
 }
