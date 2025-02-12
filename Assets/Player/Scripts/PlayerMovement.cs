@@ -15,10 +15,16 @@ public class PlayerMovement : MonoBehaviour
     private bool isGrounded;
 
     public Animator animator;
+    public BallDribble ballDribbler; // hehe, haha, hue even
 
     private bool isSliding = false;
     public float slideSpeedMultiplier = 1.5f; 
     public float slideDuration = 1.0335f;
+
+    public Vector3 GetVelocity()
+    {
+        return velocity;
+    }
 
     void Start()
     {
@@ -32,8 +38,14 @@ public class PlayerMovement : MonoBehaviour
         if (isGrounded && velocity.y < 0)
         {
             velocity.y = -2f;
-            animator.SetBool("IsJumping", false);
-            animator.SetBool("SprintJump", false);
+            if (animator.GetBool("IsJumping")) {
+                ballDribbler.isHeld = false;
+                animator.SetBool("IsJumping", false);
+            }
+            if (animator.GetBool("SprintJump")) {
+                ballDribbler.isHeld = false;
+                animator.SetBool("SprintJump", false);
+            }
         }
 
         if (isGrounded && !isSliding)
@@ -93,7 +105,10 @@ public class PlayerMovement : MonoBehaviour
             animator.SetBool("IsSprinting", true);
         }
 
-        controller.Move(moveDir.normalized * currentSpeed * Time.deltaTime);
+        velocity.x = moveDir.x * currentSpeed;
+        velocity.z = moveDir.z * currentSpeed;
+
+        controller.Move(velocity * Time.deltaTime);
 
         if (Input.GetButtonDown("Jump") && isGrounded)
         {
@@ -101,10 +116,16 @@ public class PlayerMovement : MonoBehaviour
             if (animator.GetBool("IsSprinting"))
             {
                 animator.SetBool("SprintJump", true);
+                if (animator.GetBool("IsDribbling")) {
+                    ballDribbler.isHeld = true;
+                }
             }
             else
             {
                 animator.SetBool("IsJumping", true);
+                if (animator.GetBool("IsDribbling")) {
+                    ballDribbler.isHeld = true;
+                }
             }
         }
 
@@ -120,6 +141,9 @@ public class PlayerMovement : MonoBehaviour
     IEnumerator Slide()
     {
         isSliding = true;
+        if (animator.GetBool("IsDribbling")) {
+                    ballDribbler.isHeld = true;
+                }
         animator.SetBool("IsSliding", true);
         
         float timer = 0f;
@@ -135,5 +159,6 @@ public class PlayerMovement : MonoBehaviour
         
         animator.SetBool("IsSliding", false);
         isSliding = false;
+        ballDribbler.isHeld = false;
     }
 }
