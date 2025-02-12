@@ -1,169 +1,183 @@
 using UnityEngine;
-using System.Collections;
 
-[RequireComponent(typeof(Rigidbody))]
 public class EnemyAI : MonoBehaviour
 {
-    // References
-    public Transform player;             // Assign the player's transform in the Inspector (or find by tag)
-    public Animator animator;            // The Animator controlling enemy animations
+    public float approachSpeed = 1.5f;
+    public float strafeSpeed = 0.75f;
+    public float retreatSpeed = 0.75f;
+    public float rotationSpeed = 3f;
 
-    // Aggro and distance parameters
-    public float aggroRange = 10f;       // The enemy becomes active when the player is within this range
-    public float maintainDistance = 3f;  // The enemy will try to stop moving forward when it gets within this distance
-    public float attackRange = 0.2f;       // For attacking, enemy wants to get this close
+    public float attackDistance = 1f;
+    public float approachDuration = 2f;
+    public float strafeTime = 1f;
+    public float retreatTime = 1.5f;
+    public float attackCooldown = 3.0f;
 
-    // Movement parameters
-    public float moveSpeed = 5f;         // Base movement speed when pursuing
-    public float wanderStrength = 0.5f;  // Amplitude of side-to-side oscillation
-    public float wanderSpeed = 1f;       // Frequency of oscillation
-
-    // Attack parameters
-    public float attackCooldownMin = 6f; // Minimum time between attacks
-    public float attackCooldownMax = 10f; // Maximum time between attacks
-    private float attackTimer = 0f;      // Timer to count down until next attack
-
-    // Internal state management
     private Rigidbody rb;
-    private enum State { Idle, Pursuing, Attacking }
-    private State currentState = State.Idle;
-    private bool isAttacking = false;
+    private Animator anim;
+    private Transform player;
+
+    private float stateTimer;
+    private float attackTimer;
+
+    private float strafeDirSign = 1f;
+
+    private bool attackTriggered = false;
+
+    private enum State { Approach, Strafe, Retreat, Attack }
+    private State currentState;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        // Freeze X and Z rotations so the enemy stays upright.
+        anim = GetComponent<Animator>();
+
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
-        
-        if (player == null)
-        {
-            GameObject p = GameObject.FindGameObjectWithTag("Player");
-            if (p != null)
-                player = p.transform;
-        }
-        
-        currentState = State.Idle;
-        ResetAttackTimer();
+
+        GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+        if (playerObj != null)
+            player = playerObj.transform;
+        else
+            Debug.LogError("Player not found! Make sure your player GameObject is tagged as 'Player'.");
+
+        currentState = State.Approach;
+        stateTimer = approachDuration;
+        attackTimer = 0f;
     }
 
     void Update()
     {
-        float distanceToPlayer = Vector3.Distance(transform.position, player.position);
+        if (player == null)
+            return;
 
-        // If the player is within aggro range, switch from Idle to Pursuing.
-        if (distanceToPlayer <= aggroRange)
-        {
-            if (currentState == State.Idle){
-                currentState = State.Pursuing;
-                animator.SetBool("IsWalking", true);
-            }
-        }
-        else
-        {
-            currentState = State.Idle;
-            animator.SetBool("IsWalking", false);
-        }
+        stateTimer -= Time.deltaTime;
+        attackTimer -= Time.deltaTime;
 
-        // While Pursuing, count down to the next attack.
-        if (currentState == State.Pursuing)
-        {
-            attackTimer -= Time.deltaTime;
-            if (attackTimer <= 0f)
-            {
-                currentState = State.Attacking;
-                isAttacking = true;
-            }
-        }
+        float distance = Vector3.Distance(transform.position, player.position);
 
-        // State-based behavior:
         switch (currentState)
         {
-            case State.Idle:
-                rb.linearVelocity = Vector3.zero;
+            case State.Approach:
+                if (distance <= attackDistance && attackTimer <= 0)
+                {
+                    currentState = State.Attack;
+                    stateTimer = 0.5f; 
+                    attackTriggered = false; 
+                }
+                else if (stateTimer <= 0)
+                {
+                    if (Random.Range(0, 2) == 0)
+                    {
+                        currentState = State.Strafe;
+                        stateTimer = strafeTime;
+                        strafeDirSign = Random.value < 0.5f ? 1f : -1f;
+                    }
+                    else
+                    {
+                        currentState = State.Retreat;
+                        stateTimer = retreatTime;
+                    }
+                }
                 break;
 
-            case State.Pursuing:
-                PursuePlayer(distanceToPlayer);
+            case State.Strafe:
+                if (stateTimer <= 0)
+                {
+                    currentState = State.Approach;
+                    stateTimer = approachDuration;
+                }
                 break;
 
-            case State.Attacking:
-                AttackPlayer(distanceToPlayer);
+            case State.Retreat:
+                if (stateTimer <= 0)
+                {
+                    currentState = State.Approach;
+                    stateTimer = approachDuration;
+                }
+                break;
+
+            case State.Attack:
+                if (!attackTriggered)
+                {
+                    int attackIndex = Random.Range(1, 4);
+                    switch (attackIndex)
+                    {
+                        case 1:
+                            anim.SetTrigger("Attack1");
+                            break;
+                        case 2:
+                            anim.SetTrigger("Attack2");
+                            break;
+                        case 3:
+                            anim.SetTrigger("Attack3");
+                            break;
+                    }
+                    attackTriggered = true;
+                    Debug.Log("Enemy attacks! Attack " + attackIndex);
+                }
+                if (stateTimer <= 0)
+                {
+                    attackTimer = attackCooldown;
+                    currentState = State.Approach;
+                    stateTimer = approachDuration;
+                }
                 break;
         }
+
+
+        float dampTime = 0.2f;
+
+        switch (currentState)
+        {
+            case State.Approach:
+                anim.SetFloat("Vertical", 1f, dampTime, Time.deltaTime);
+                anim.SetFloat("Horizontal", 0f, dampTime, Time.deltaTime);
+                break;
+            case State.Strafe:
+                anim.SetFloat("Vertical", 0f, dampTime, Time.deltaTime);
+                anim.SetFloat("Horizontal", (strafeDirSign > 0 ? 1f : -1f), dampTime, Time.deltaTime);
+                break;
+            case State.Retreat:
+                anim.SetFloat("Vertical", -1f, dampTime, Time.deltaTime);
+                anim.SetFloat("Horizontal", 0f, dampTime, Time.deltaTime);
+                break;
+            case State.Attack:
+                anim.SetFloat("Vertical", 0f, dampTime, Time.deltaTime);
+                anim.SetFloat("Horizontal", 0f, dampTime, Time.deltaTime);
+                break;
+        }
+
     }
 
-    void PursuePlayer(float distanceToPlayer)
+    void FixedUpdate()
     {
-        // When far away, move toward the player with a wavy (oscillatory) path.
-        if (distanceToPlayer > maintainDistance)
-        {
-            // Direct vector to the player.
-            Vector3 direction = (player.position - transform.position).normalized;
-            // Compute a perpendicular vector (to add a sine-based oscillation).
-            Vector3 perp = Vector3.Cross(direction, Vector3.up);
-            float wanderOffset = Mathf.Sin(Time.time * wanderSpeed) * wanderStrength;
-            Vector3 offset = perp * wanderOffset;
-            Vector3 targetDir = (direction + offset).normalized;
+        if (player == null)
+            return;
 
-            // Smoothly rotate to face the target direction.
-            if (targetDir != Vector3.zero)
-            {
-                Quaternion targetRotation = Quaternion.LookRotation(targetDir);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 0.2f);
-            }
-
-            rb.linearVelocity = targetDir * moveSpeed;
-        }
-        else
-        {
-            // Within maintainDistance, stop moving.
-            rb.linearVelocity = Vector3.zero;
-        }
-    }
-
-    void AttackPlayer(float distanceToPlayer)
-    {
-        // Always smoothly face the player while attacking.
         Vector3 directionToPlayer = (player.position - transform.position).normalized;
-        if (directionToPlayer != Vector3.zero)
+
+        Quaternion targetRotation = Quaternion.LookRotation(directionToPlayer);
+        rb.MoveRotation(Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.fixedDeltaTime));
+
+        Vector3 movement = Vector3.zero;
+
+        switch (currentState)
         {
-            Quaternion targetRotation = Quaternion.LookRotation(directionToPlayer);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 0.2f);
+            case State.Approach:
+                movement = directionToPlayer * approachSpeed;
+                break;
+            case State.Strafe:
+                Vector3 strafeDirection = Vector3.Cross(directionToPlayer, Vector3.up) * strafeDirSign;
+                movement = strafeDirection.normalized * strafeSpeed;
+                break;
+            case State.Retreat:
+                movement = -directionToPlayer * retreatSpeed;
+                break;
+            case State.Attack:
+                movement = Vector3.zero;
+                break;
         }
 
-        // If not within attack range, approach the player.
-        if (distanceToPlayer > attackRange)
-        {
-            rb.linearVelocity = directionToPlayer * moveSpeed;
-        }
-        else
-        {
-            // Once close enough, stop moving.
-            rb.linearVelocity = Vector3.zero;
-
-            // Begin attack only once.
-            if (isAttacking)
-            {
-                StartCoroutine(PerformAttack());
-            }
-        }
-    }
-
-    IEnumerator PerformAttack()
-    {
-        // Randomly select one of three attack triggers.
-        int attackChoice = Random.Range(1, 4); // 1, 2, or 3
-        animator.SetTrigger("Attack" + attackChoice);
-        yield return new WaitForSeconds(0.01f);
-
-        // After attacking, reset the attack timer and return to pursuing.
-        isAttacking = false;
-        ResetAttackTimer();
-        currentState = State.Pursuing;
-    }
-
-    void ResetAttackTimer()
-    {
-        attackTimer = Random.Range(attackCooldownMin, attackCooldownMax);
+        rb.MovePosition(rb.position + movement * Time.fixedDeltaTime);
     }
 }

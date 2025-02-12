@@ -712,16 +712,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3cddaf981adfd2d45bc8a13c3f387b47, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  player: {fileID: 2089580569}
-  animator: {fileID: 2078998435}
-  aggroRange: 20
-  maintainDistance: 5
-  attackRange: 3
-  moveSpeed: 3
-  wanderStrength: 0.5
-  wanderSpeed: 1
-  attackCooldownMin: 3
-  attackCooldownMax: 6
+  approachSpeed: 1.5
+  strafeSpeed: 0.75
+  retreatSpeed: 0.75
+  rotationSpeed: 4
+  attackDistance: 1
+  approachDuration: 2
+  strafeTime: 1
+  retreatTime: 1.5
+  attackCooldown: 3
 --- !u!1001 &2089580567
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -772,6 +771,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: c20b412798c874341b94f602f8bcf888, type: 3}
       propertyPath: m_Name
+      value: Player
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: c20b412798c874341b94f602f8bcf888, type: 3}
+      propertyPath: m_TagString
       value: Player
       objectReference: {fileID: 0}
     m_RemovedComponents: []
