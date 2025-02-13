@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: aab208a4fcf5df046b48deb7fc2f95b0
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 14313
+  packageName: Double Axe
+  packageVersion: 1.4
+  assetPath: Assets/Double axe/Shaders/DiffSpecGloss.shader
+  uploadId: 34242
