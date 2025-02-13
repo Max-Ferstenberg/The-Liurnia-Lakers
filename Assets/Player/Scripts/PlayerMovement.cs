@@ -15,7 +15,7 @@ public class PlayerMovement : MonoBehaviour
     private bool isGrounded;
 
     public Animator animator;
-    public BallDribble ballDribbler; // hehe, haha, hue even
+    //public BallDribble ballDribbler; // hehe, haha, hue even
 
     private bool isSliding = false;
     public float slideSpeedMultiplier = 1.5f; 
@@ -39,11 +39,11 @@ public class PlayerMovement : MonoBehaviour
         {
             velocity.y = -2f;
             if (animator.GetBool("IsJumping")) {
-                ballDribbler.isHeld = false;
+                //ballDribbler.isHeld = false;
                 animator.SetBool("IsJumping", false);
             }
             if (animator.GetBool("SprintJump")) {
-                ballDribbler.isHeld = false;
+                //ballDribbler.isHeld = false;
                 animator.SetBool("SprintJump", false);
             }
         }
@@ -117,14 +117,14 @@ public class PlayerMovement : MonoBehaviour
             {
                 animator.SetBool("SprintJump", true);
                 if (animator.GetBool("IsDribbling")) {
-                    ballDribbler.isHeld = true;
+                    //ballDribbler.isHeld = true;
                 }
             }
             else
             {
                 animator.SetBool("IsJumping", true);
                 if (animator.GetBool("IsDribbling")) {
-                    ballDribbler.isHeld = true;
+                    //ballDribbler.isHeld = true;
                 }
             }
         }
@@ -141,9 +141,9 @@ public class PlayerMovement : MonoBehaviour
     IEnumerator Slide()
     {
         isSliding = true;
-        if (animator.GetBool("IsDribbling")) {
-                    ballDribbler.isHeld = true;
-                }
+        //if (animator.GetBool("IsDribbling")) {
+                    //ballDribbler.isHeld = true;
+                //}
         animator.SetBool("IsSliding", true);
         
         float timer = 0f;
@@ -159,6 +159,6 @@ public class PlayerMovement : MonoBehaviour
         
         animator.SetBool("IsSliding", false);
         isSliding = false;
-        ballDribbler.isHeld = false;
+        //ballDribbler.isHeld = false;
     }
 }
