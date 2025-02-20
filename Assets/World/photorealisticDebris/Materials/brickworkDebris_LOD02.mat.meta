@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: eee5070593a0b8545bbea48ac391d51d
+timeCreated: 1442640793
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 70000
+  packageName: Photoreal Debris Pack Demo
+  packageVersion: 1.0
+  assetPath: Assets/photorealisticDebris/Materials/brickworkDebris_LOD02.mat
+  uploadId: 135143

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 4b9bfada823db5447bed46d7adc0b558
+timeCreated: 1451416640
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 70000
+  packageName: Photoreal Debris Pack Demo
+  packageVersion: 1.0
+  assetPath: Assets/photorealisticDebris/Materials/cinderDebris6_LOD02.mat
+  uploadId: 135143
