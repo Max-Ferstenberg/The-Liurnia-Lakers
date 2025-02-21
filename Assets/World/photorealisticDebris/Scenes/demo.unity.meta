@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 07f4cf2e318b968438b9a864e4ac89b3
+timeCreated: 1471793482
+licenseType: Store
+DefaultImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 70000
+  packageName: Photoreal Debris Pack Demo
+  packageVersion: 1.0
+  assetPath: Assets/photorealisticDebris/Scenes/demo.unity
+  uploadId: 135143

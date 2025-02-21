@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 41a9c426c6802ce45b46cbaf6d42c71d
+timeCreated: 1442708809
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 70000
+  packageName: Photoreal Debris Pack Demo
+  packageVersion: 1.0
+  assetPath: Assets/photorealisticDebris/Prefabs/brickworkDebris.prefab
+  uploadId: 135143

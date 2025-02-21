@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 91e43e5afc808154b972e36534d9d946
+timeCreated: 1450032864
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 70000
+  packageName: Photoreal Debris Pack Demo
+  packageVersion: 1.0
+  assetPath: Assets/photorealisticDebris/Prefabs/concreteDebris8.prefab
+  uploadId: 135143

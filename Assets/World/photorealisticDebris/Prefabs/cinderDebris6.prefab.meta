@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 0f14063930b370b46b0c60f9b9c78221
+timeCreated: 1451416742
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 70000
+  packageName: Photoreal Debris Pack Demo
+  packageVersion: 1.0
+  assetPath: Assets/photorealisticDebris/Prefabs/cinderDebris6.prefab
+  uploadId: 135143

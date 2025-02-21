@@ -7,8 +7,8 @@ public class CameraController : MonoBehaviour
     public Vector3 offset = new Vector3(0, 2, -4); 
     public float mouseSensitivity = 100f;
     public float rotationSmoothTime = 0.1f; 
-    public float minPitch = -10f;  
-    public float maxPitch = 45f; 
+    public float minPitch = -90f;
+    public float maxPitch = 90f; 
 
     private float yaw; 
     private float pitch; 
@@ -50,7 +50,14 @@ public class CameraController : MonoBehaviour
             float heightAdjustment = Mathf.Lerp(0.5f, -0.5f, Mathf.InverseLerp(minPitch, maxPitch, currentPitch));
             desiredPosition.y += heightAdjustment;
 
-            transform.position = desiredPosition;
+            Vector3 fromPosition = player.position + Vector3.up * 1.5f;
+            RaycastHit hit;
+            Vector3 finalPosition = desiredPosition;
+            if (Physics.Linecast(fromPosition, desiredPosition, out hit))
+            {
+                finalPosition = hit.point + hit.normal * 0.3f;
+            }
+            transform.position = finalPosition;
             Vector3 lookAtPoint = player.position + Vector3.up * 1.5f;
             transform.LookAt(lookAtPoint);
         }
@@ -75,7 +82,7 @@ public class CameraController : MonoBehaviour
         Quaternion targetRotation = Quaternion.LookRotation(player.position - transform.position);
 
         float time = 0f;
-        float duration = 2f;
+        float duration = 1f;
 
         while (time < duration)
         {
@@ -84,7 +91,6 @@ public class CameraController : MonoBehaviour
             transform.rotation = Quaternion.Slerp(startRotation, targetRotation, time / duration);
             yield return null;
         }
-        StartCoroutine(FollowPlayer());
     }
 
     private IEnumerator FollowPlayer()
@@ -94,7 +100,6 @@ public class CameraController : MonoBehaviour
         while (cameraLocked)
         {
             Vector3 targetPosition = player.position + offsetSmooth;
-            transform.position = Vector3.Lerp(transform.position, targetPosition, Time.deltaTime * 2f);
             transform.LookAt(player.position + Vector3.up * 1.5f);
             yield return null;
         }

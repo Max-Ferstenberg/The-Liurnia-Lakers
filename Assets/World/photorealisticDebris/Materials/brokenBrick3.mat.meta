@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 7bb47687cb1dd2841adb54558eec34d2
+timeCreated: 1468525339
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 70000
+  packageName: Photoreal Debris Pack Demo
+  packageVersion: 1.0
+  assetPath: Assets/photorealisticDebris/Materials/brokenBrick3.mat
+  uploadId: 135143
