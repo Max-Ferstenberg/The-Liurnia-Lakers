@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 99d6f459e0bcccd47a5b72b03a228254
+timeCreated: 1450032759
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 70000
+  packageName: Photoreal Debris Pack Demo
+  packageVersion: 1.0
+  assetPath: Assets/photorealisticDebris/Materials/concreteDebris8_LOD02.mat
+  uploadId: 135143

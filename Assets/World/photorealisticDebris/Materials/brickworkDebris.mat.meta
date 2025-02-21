@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 1cd39a4eb27256142bde7d5bbe4cf90a
+timeCreated: 1442640595
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 70000
+  packageName: Photoreal Debris Pack Demo
+  packageVersion: 1.0
+  assetPath: Assets/photorealisticDebris/Materials/brickworkDebris.mat
+  uploadId: 135143

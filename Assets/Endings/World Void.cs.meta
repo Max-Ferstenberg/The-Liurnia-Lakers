@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 36f2cac2379aa464fa5e9e12e49d7083
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - endingHandler: {instanceID: 0}
+  - gameSource: {instanceID: 0}
+  - playerSource: {instanceID: 0}
+  - deathSound: {fileID: 8300000, guid: 267fc468d5260624a8544b92f8437573, type: 3}
+  - deathScream: {fileID: 8300000, guid: 6d3336d43b81fca4fb1bf4d52a1fb564, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
