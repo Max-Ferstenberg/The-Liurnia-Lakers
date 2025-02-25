@@ -17,6 +17,7 @@ public class BallDribble : MonoBehaviour
     private bool bounced = true;
     public bool isHeld = false;
     private bool lockedToHand = false;
+    public float maxRollingForce;
     public PlayerMovement playerMovement;
 
     void Start()
@@ -58,13 +59,49 @@ public class BallDribble : MonoBehaviour
             if (isDribbling)
             {
                 Vector3 newPosition = new Vector3(handTarget.position.x, Mathf.Min(handTarget.position.y, transform.position.y), handTarget.position.z);
-                transform.position = newPosition;
+                if (CanMoveToPosition(newPosition))
+                {
+                    transform.position = newPosition;
+                }
+                else
+                {
+                    ApplyRollingForce(newPosition);
+                }
+
                 if (isPalmed)
                 {
                     GrabBall(pullForce, false);
                 }
             }
         }
+    }
+
+    void ApplyRollingForce(Vector3 targetPosition)
+    {
+        Vector3 direction = new Vector3(targetPosition.x - transform.position.x, 0, targetPosition.z - transform.position.z);
+        float distance = direction.magnitude;
+
+        if (distance > 0.01f)
+        {
+            direction.Normalize();
+            float forceMagnitude = Mathf.Clamp(distance / Time.deltaTime, 0, maxRollingForce);
+            rb.AddForce(direction * forceMagnitude, ForceMode.Acceleration);
+        }
+    }
+
+    private bool CanMoveToPosition(Vector3 targetPosition)
+    {
+        Vector3 direction = targetPosition - transform.position;
+        float distance = direction.magnitude;
+        if (distance > 0.1f)
+        {
+            RaycastHit hit;
+            if (Physics.Raycast(transform.position, direction, out hit, distance))
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     public void TryCatchBall()
@@ -105,16 +142,23 @@ public class BallDribble : MonoBehaviour
 
     public void BounceBall()
     {
-        Vector3 releaseVelocity = playerMovement.GetVelocity();
-        isPalmed = false;
-        isHeld = false;
-        lockedToHand = false;
-        bounced = false;
-        if (isDribbling) {
-            releaseVelocity.y -= pushForce;
-            rb.linearVelocity = releaseVelocity;
+        if (lockedToHand == true) {
+            Vector3 releaseVelocity = playerMovement.GetVelocity();
+            isPalmed = false;
+            isHeld = false;
+            lockedToHand = false;
+            bounced = false;
+            if (isDribbling)
+            {
+                releaseVelocity.y -= pushForce;
+                rb.linearVelocity = releaseVelocity;
+            }
+            rb.useGravity = true;
+        } else
+        {
+            ReleaseBall();
         }
-        rb.useGravity = true;        
+            
     }
 
     private void GrabBall(float force, bool isMagic)
@@ -161,6 +205,10 @@ public class BallDribble : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
+        if (isDribbling == true)
+        {
+            rb.linearVelocity = new Vector3(0, rb.linearVelocity.y, 0);
+        }
         StartCoroutine(CheckBounce());
     }
 
