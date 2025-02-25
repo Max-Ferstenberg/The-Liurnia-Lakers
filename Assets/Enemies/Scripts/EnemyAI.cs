@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 [RequireComponent(typeof(Rigidbody))]
 public class EnemyAI : MonoBehaviour
@@ -119,7 +120,10 @@ public class EnemyAI : MonoBehaviour
         anim = GetComponent<Animator>();
 
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
-
+        if (grid != null)
+        {
+            grid.Initialize(elevationThreshold, player);
+        }
         if (player == null)
         {
             GameObject p = GameObject.FindGameObjectWithTag("Player");
@@ -492,23 +496,21 @@ public class EnemyAI : MonoBehaviour
     {
         if (grid == null || player == null) return;
 
-        // Check elevation difference and stair status
-        float elevationDifference = Mathf.Abs(player.position.y - transform.position.y);
-        bool playerOnStairs = grid.NodeFromWorldPoint(player.position)?.movementCost == 3f;
-        bool enemyOnStairs = grid.NodeFromWorldPoint(transform.position)?.movementCost == 3f;
-        bool needsStairs = elevationDifference > elevationThreshold || playerOnStairs;
+        Node playerNode = grid.NodeFromWorldPoint(player.position);
+        bool playerOnStairs = playerNode != null && playerNode.movementCost == 3f;
 
         foreach (Node node in grid.AllNodes)
         {
             if (node == null) continue;
             
-            if (needsStairs && node.movementCost == 3f)
+            // Make stair endpoints highly desirable
+            if (playerOnStairs && node.movementCost == 3f)
             {
-                node.movementCost = 1f; // Prefer stairs when needed
+                node.movementCost = 0.5f; // Extreme priority
             }
             else if (node.movementCost == 3f)
             {
-                node.movementCost = 10f; // Strongly discourage stairs otherwise
+                node.movementCost = 3f; // Reset
             }
         }
     }
@@ -699,60 +701,34 @@ public class EnemyAI : MonoBehaviour
     {
         if (grid != null && player != null)
         {
-            Vector3 targetPos = player.position;
-            
-            // Enhanced stair endpoint detection
             Node playerNode = grid.NodeFromWorldPoint(player.position);
-            if (playerNode != null && playerNode.movementCost == 3f)
+            
+            if (playerNode.movementCost == 3f) // Player is on stairs
             {
-                Node stairEndpoint = FindStairEndpoint(playerNode);
-                if (stairEndpoint != null)
+                // Find nearest stair entrypoint at the enemy's current elevation
+                Node stairEntry = grid.FindStairEntrypoint(transform.position);
+                
+                // Path to stair entrypoint (flat ground)
+                List<Node> pathToEntry = AStarPathfinder.FindPath(grid, transform.position, stairEntry.worldPosition);
+                
+                // Path from entrypoint to player (stairs)
+                List<Node> pathFromEntry = AStarPathfinder.FindPath(grid, stairEntry.worldPosition, player.position);
+
+                if (pathToEntry != null && pathFromEntry != null && 
+                    pathToEntry.Count > 0 && pathFromEntry.Count > 0)
                 {
-                    targetPos = stairEndpoint.worldPosition;
-                    Debug.Log($"Adjusted target to stair endpoint: {targetPos}");
+                    currentPath = new List<Node>(pathToEntry);
+                    currentPath.AddRange(pathFromEntry);
+                    currentPathIndex = 0;
                 }
             }
-
-            currentPath = AStarPathfinder.FindPath(grid, transform.position, targetPos);
-            currentPathIndex = 0;
-            
-            // Debug draw
-            if (currentPath != null)
-                Debug.Log($"New path contains {currentPath.Count} nodes");
+            else
+            {
+                // Default pathfinding
+                currentPath = AStarPathfinder.FindPath(grid, transform.position, player.position);
+                currentPathIndex = 0;
+            }
         }
-    }
-
-    Node FindStairEndpoint(Node startNode)
-    {
-        if (grid == null || startNode == null) return null;
-
-        // Search upward with boundary check
-        Node highest = startNode;
-        for (int y = startNode.gridY; y < grid.GridSizeY; y++)
-        {
-            Node check = grid.Nodes[startNode.gridX, y, startNode.gridZ];
-            if (check == null || check.movementCost != 3f) break;
-            highest = check;
-            Debug.Log($"Found higher stair node at Y:{y}");
-        }
-
-        // Search downward with boundary check
-        Node lowest = startNode;
-        for (int y = startNode.gridY; y >= 0; y--)
-        {
-            Node check = grid.Nodes[startNode.gridX, y, startNode.gridZ];
-            if (check == null || check.movementCost != 3f) break;
-            lowest = check;
-            Debug.Log($"Found lower stair node at Y:{y}");
-        }
-
-        // Debug output
-        Debug.Log($"Stair endpoints - Highest: {highest.worldPosition} Lowest: {lowest.worldPosition}");
-        
-        // Choose closest to player's vertical position
-        float playerY = player.position.y;
-        return (Mathf.Abs(highest.worldPosition.y - playerY) < 
-            Mathf.Abs(lowest.worldPosition.y - playerY)) ? highest : lowest;
     }
 
     void OnDrawGizmos()

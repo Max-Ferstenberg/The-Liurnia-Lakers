@@ -81,29 +81,33 @@ public class AStarPathfinder {
             }
         }
         path.Reverse();
-
-        // First pass: Simplify path while preserving stairs and ledges
-        for (int i = 0; i < path.Count - 2; i++)
+        bool allSameLevel = path.All(n => n.gridY == startNode.gridY);
+        if(!allSameLevel)
         {
-            Node current = path[i];
-            Node nextNext = path[i + 2];
-
-            bool isStairNode = current.movementCost == 3f || 
-                            path[i + 1].movementCost == 3f || 
-                            nextNext.movementCost == 3f;
-
-            bool isNearLedge = 
-                Mathf.Abs(current.worldPosition.y - nextNext.worldPosition.y) > 0.1f ||
-                !grid.IsWalkablePath(current.worldPosition, nextNext.worldPosition);
-
-            // Never simplify paths involving stairs or ledges
-            if (!isStairNode && !isNearLedge && 
-                Mathf.Abs(current.gridY - nextNext.gridY) == 0 && 
-                current.gridY == path[i + 1].gridY)
+            // First pass: Simplify path while preserving stairs and ledges
+            for (int i = 0; i < path.Count - 2; i++)
             {
-                path.RemoveAt(i + 1);
-                i--;
+                Node current = path[i];
+                Node nextNext = path[i + 2];
+
+                bool isStairNode = current.movementCost == 3f || 
+                                path[i + 1].movementCost == 3f || 
+                                nextNext.movementCost == 3f;
+
+                bool isNearLedge = 
+                    Mathf.Abs(current.worldPosition.y - nextNext.worldPosition.y) > 0.1f ||
+                    !grid.IsWalkablePath(current.worldPosition, nextNext.worldPosition);
+
+                // Never simplify paths involving stairs or ledges
+                if (!isStairNode && !isNearLedge && 
+                    Mathf.Abs(current.gridY - nextNext.gridY) == 0 && 
+                    current.gridY == path[i + 1].gridY)
+                {
+                    path.RemoveAt(i + 1);
+                    i--;
+                }
             }
+
         }
 
         // Second pass: Enhance vertical movement interpolation (original code)
@@ -178,12 +182,12 @@ public class AStarPathfinder {
         int dstX = Mathf.Abs(nodeA.gridX - nodeB.gridX);
         int dstY = Mathf.Abs(nodeA.gridY - nodeB.gridY);
         int dstZ = Mathf.Abs(nodeA.gridZ - nodeB.gridZ);
-        
-        // Penalize non-stair vertical movement heavily
-        float verticalMultiplier = 20f; 
-        if (nodeA.movementCost == 3f || nodeB.movementCost == 3f)
-            verticalMultiplier = 5f; // Reduce penalty if stairs are intentional
-        
-        return (dstX + dstZ) * 10 + dstY * verticalMultiplier;
+
+        // Reduced penalty if either node is a stair
+        float verticalPenalty = (nodeA.movementCost == 3f || nodeB.movementCost == 3f) 
+            ? 5f * dstY 
+            : 1000f * dstY;
+
+        return (dstX + dstZ) * 10 + verticalPenalty;
     }
 }

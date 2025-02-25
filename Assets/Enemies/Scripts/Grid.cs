@@ -34,7 +34,12 @@ public class Grid : MonoBehaviour {
         }
     }
 
+    [Header("Grid Size Parameters")]
     int gridSizeX, gridSizeY, gridSizeZ;
+    private float elevationThreshold; // Add this field
+
+    [Header("Player Transform")]
+    private Transform player;        // Add this field
 
     void Awake()
     {
@@ -46,6 +51,12 @@ public class Grid : MonoBehaviour {
         ProcessStairNeighbors();
     }
 
+    public void Initialize(float elevationThreshold, Transform player)
+    {
+        this.elevationThreshold = elevationThreshold;
+        this.player = player;
+    }
+    
     void CreateGrid()
     {
         _grid = new Node[gridSizeX, gridSizeY, gridSizeZ];
@@ -193,14 +204,14 @@ public class Grid : MonoBehaviour {
     {
         for (int x = 0; x < gridSizeX; x++)
         {
-            for (int y = 0; y < gridSizeY; y++)
+            for (int z = 0; z < gridSizeZ; z++)
             {
-                for (int z = 0; z < gridSizeZ; z++)
+                for (int y = 0; y < gridSizeY; y++)
                 {
                     Node node = _grid[x, y, z];
                     if (node.movementCost == 3f)
                     {
-                        // Connect diagonal neighbors for slope navigation
+                        // Connect to adjacent flat nodes at the same Y level
                         for (int dx = -1; dx <= 1; dx++)
                         {
                             for (int dz = -1; dz <= 1; dz++)
@@ -209,15 +220,17 @@ public class Grid : MonoBehaviour {
                                 
                                 int checkX = x + dx;
                                 int checkZ = z + dz;
-                                int checkY = y - 1; // Move down for slope
+                                int checkY = y; // Same Y level
 
                                 if (checkX >= 0 && checkX < gridSizeX &&
-                                    checkZ >= 0 && checkZ < gridSizeZ &&
-                                    checkY >= 0 && checkY < gridSizeY)
+                                    checkZ >= 0 && checkZ < gridSizeZ)
                                 {
                                     Node neighbor = _grid[checkX, checkY, checkZ];
-                                    neighbor.movementCost = 3f;
-                                    neighbor.walkable = true;
+                                    if (neighbor != null && neighbor.movementCost == 1f)
+                                    {
+                                        neighbor.movementCost = 3f; // Mark as stair entry
+                                        neighbor.walkable = true;
+                                    }
                                 }
                             }
                         }
@@ -265,6 +278,58 @@ public class Grid : MonoBehaviour {
          return neighbours;
     }
 
+    // In Grid.cs
+    public Node FindStairEntrypoint(Vector3 enemyPosition)
+    {
+        Node enemyNode = NodeFromWorldPoint(enemyPosition);
+        
+        // Search horizontally for the nearest stair node at the same Y level
+        for (int x = 0; x < gridSizeX; x++)
+        {
+            for (int z = 0; z < gridSizeZ; z++)
+            {
+                Node node = _grid[x, enemyNode.gridY, z];
+                if (node != null && node.movementCost == 3f)
+                {
+                    return node;
+                }
+            }
+        }
+        
+        // Fallback: Use existing stair endpoint logic
+        return FindStairEndpoint(enemyNode, false);
+    }
+
+    public Node FindStairEndpoint(Node stairNode, bool findTop)
+    {
+        if (stairNode.movementCost != 3f) return stairNode;
+
+        int x = stairNode.gridX;
+        int z = stairNode.gridZ;
+        int y = stairNode.gridY;
+
+        if (findTop)
+        {
+            for (int i = y; i < gridSizeY; i++)
+            {
+                Node node = _grid[x, i, z];
+                // Stop at first non-stair node or grid boundary
+                if (node == null || node.movementCost != 3f) 
+                    return _grid[x, Mathf.Min(i-1, gridSizeY-1), z];
+            }
+        }
+        else
+        {
+            for (int i = y; i >= 0; i--)
+            {
+                Node node = _grid[x, i, z];
+                if (node == null || node.movementCost != 3f) 
+                    return _grid[x, Mathf.Max(i+1, 0), z];
+            }
+        }
+        return stairNode;
+    }
+
     // Validate vertical movement
     private bool IsVerticalConnectionValid(Node node, int yOffset)
     {
@@ -272,10 +337,10 @@ public class Grid : MonoBehaviour {
         if (targetY < 0 || targetY >= gridSizeY) return false;
 
         Node verticalNode = _grid[node.gridX, targetY, node.gridZ];
-        
-        // Only allow vertical movement if either node is a stair
-        return (node.movementCost == 3f || verticalNode.movementCost == 3f) && 
-            verticalNode.walkable;
+        if (verticalNode == null || !verticalNode.walkable) return false;
+
+        // Allow vertical movement if either node is a stair
+        return node.movementCost == 3f || verticalNode.movementCost == 3f;
     }
 
     public bool IsWalkablePath(Vector3 start, Vector3 end)
@@ -284,11 +349,13 @@ public class Grid : MonoBehaviour {
         Node startNode = NodeFromWorldPoint(start);
         Node endNode = NodeFromWorldPoint(end);
         float elevationDiff = Mathf.Abs(start.y - end.y);
-        
-        if (elevationDiff < 0.5f && 
+
+        // Block stairs if no elevation difference AND player isn't on stairs
+        bool playerOnStairs = NodeFromWorldPoint(player.position).movementCost == 3f;
+        if (!playerOnStairs && elevationDiff < elevationThreshold && 
             (startNode.movementCost == 3f || endNode.movementCost == 3f))
         {
-            return false; // Block stair usage for flat paths
+            return false;
         }
 
         // Existing walkable check
