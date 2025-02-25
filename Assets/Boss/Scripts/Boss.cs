@@ -11,7 +11,7 @@ public class Boss : MonoBehaviour
     public Transform mouthTransform;
 
     [Header("Tracking Settings")]
-    [Tooltip("How fast the boss rotates (affects smoothing). Lower values make it less exact.")]
+    [Tooltip("How fast the boss rotates (affects smoothing). Lower values make it legiss exact.")]
     public float turnSpeed = 30f;
     [Tooltip("Angular difference (in degrees) above which turning animation is triggered.")]
     public float turningThreshold = 10f;
