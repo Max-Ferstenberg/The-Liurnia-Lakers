@@ -50,7 +50,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 18ebdad9b6c21ee41bb983a73ee68e91, type: 3}
       propertyPath: m_Name
-      value: Ch25_nonPBR
+      value: Enemy1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -136,15 +136,36 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3cddaf981adfd2d45bc8a13c3f387b47, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  approachSpeed: 1.5
-  strafeSpeed: 0.75
-  retreatSpeed: 0.75
+  approachSpeed: 3
+  strafeSpeed: 2
+  retreatSpeed: 1
   rotationSpeed: 4
   attackDistance: 1
   approachDuration: 2
   strafeTime: 1
   retreatTime: 1.5
-  attackCooldown: 3
+  attackCooldown: 1.5
+  attackTriggerRadius: 1
+  obstacleDetectionRadius: 1
+  obstacleDetectionDistance: 3
+  obstacleAvoidanceForce: 5
+  trapAvoidanceRadius: 3
+  trapAvoidanceForce: 4
+  trapMask:
+    serializedVersion: 2
+    m_Bits: 4096
+  separationRadius: 2
+  separationForce: 3
+  enemyMask:
+    serializedVersion: 2
+    m_Bits: 2048
+  player: {fileID: 0}
+  anim: {fileID: 7696956101808384089}
+  aggroRange: 15
+  obstacleMask:
+    serializedVersion: 2
+    m_Bits: 1536
+  dampTime: 0.2
 --- !u!95 &7696956101808384089
 Animator:
   serializedVersion: 7

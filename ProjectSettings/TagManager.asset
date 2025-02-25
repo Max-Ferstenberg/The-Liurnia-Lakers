@@ -8,6 +8,10 @@ TagManager:
   - Floor
   - SpinningLogTrap
   - SwingingAxe
+  - Enemy
+  - Stairs
+  - Prop
+  - Trap
   layers:
   - Default
   - TransparentFX
@@ -20,10 +24,10 @@ TagManager:
   - Floor
   - Obstacle
   - Wall
-  - 
-  - 
-  - 
-  - 
+  - Enemy
+  - Trap
+  - Prop
+  - Stairs
   - 
   - 
   - 
