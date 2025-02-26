@@ -1,7 +1,9 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class EnemyAI : MonoBehaviour
 {
+    // Existing movement parameters
     public float approachSpeed = 1.5f;
     public float strafeSpeed = 0.75f;
     public float retreatSpeed = 0.75f;
@@ -13,15 +15,20 @@ public class EnemyAI : MonoBehaviour
     public float retreatTime = 1.5f;
     public float attackCooldown = 3.0f;
 
-    private Rigidbody rb;
+    // New boid parameters
+    public float boidNeighborRadius = 3f;
+    public float boidSeparationDistance = 1.5f;
+    public float boidSeparationWeight = 1.0f;
+    public float boidAlignmentWeight = 0.5f;
+    public float boidCohesionWeight = 0.5f;
+
+    public Rigidbody rb; // Made public so other instances can read velocity
     private Animator anim;
     private Transform player;
 
     private float stateTimer;
     private float attackTimer;
-
     private float strafeDirSign = 1f;
-
     private bool attackTriggered = false;
 
     private enum State { Approach, Strafe, Retreat, Attack }
@@ -61,8 +68,8 @@ public class EnemyAI : MonoBehaviour
                 if (distance <= attackDistance && attackTimer <= 0)
                 {
                     currentState = State.Attack;
-                    stateTimer = 0.5f; 
-                    attackTriggered = false; 
+                    stateTimer = 0.5f;
+                    attackTriggered = false;
                 }
                 else if (stateTimer <= 0)
                 {
@@ -124,9 +131,8 @@ public class EnemyAI : MonoBehaviour
                 break;
         }
 
-
+        // Set animation parameters (unchanged)
         float dampTime = 0.2f;
-
         switch (currentState)
         {
             case State.Approach:
@@ -146,7 +152,6 @@ public class EnemyAI : MonoBehaviour
                 anim.SetFloat("Horizontal", 0f, dampTime, Time.deltaTime);
                 break;
         }
-
     }
 
     void FixedUpdate()
@@ -154,13 +159,13 @@ public class EnemyAI : MonoBehaviour
         if (player == null)
             return;
 
+        // Rotate to face the player as before
         Vector3 directionToPlayer = (player.position - transform.position).normalized;
-
         Quaternion targetRotation = Quaternion.LookRotation(directionToPlayer);
         rb.MoveRotation(Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.fixedDeltaTime));
 
+        // Determine movement based on state
         Vector3 movement = Vector3.zero;
-
         switch (currentState)
         {
             case State.Approach:
@@ -178,6 +183,59 @@ public class EnemyAI : MonoBehaviour
                 break;
         }
 
+        // Compute boid forces from nearby enemies
+        Vector3 boidForce = Boid();
+        movement += boidForce; // blend boid force with current state movement
+
+        // Move enemy based on the combined vector
         rb.MovePosition(rb.position + movement * Time.fixedDeltaTime);
+    }
+
+    Vector3 Boid()
+    {
+        Vector3 separation = Vector3.zero;
+        Vector3 alignment = Vector3.zero;
+        Vector3 cohesion = Vector3.zero;
+        int count = 0;
+
+        // Look for other enemies in the neighborhood.
+        Collider[] colliders = Physics.OverlapSphere(transform.position, boidNeighborRadius);
+        foreach (Collider col in colliders)
+        {
+            if (col.gameObject == this.gameObject)
+                continue;
+
+            // Check if the other object has an EnemyAI script.
+            EnemyAI otherEnemy = col.GetComponent<EnemyAI>();
+            if (otherEnemy != null)
+            {
+                count++;
+                Vector3 diff = transform.position - otherEnemy.transform.position;
+                float dist = diff.magnitude;
+                if (dist < boidSeparationDistance && dist > 0)
+                {
+                    separation += diff.normalized / dist;
+                }
+                // Use the other enemy's current velocity for alignment.
+                alignment += otherEnemy.rb.linearVelocity;
+                // For cohesion, add the neighbor's position.
+                cohesion += otherEnemy.transform.position;
+            }
+        }
+
+        if (count > 0)
+        {
+            separation /= count;
+            alignment /= count;
+            cohesion /= count;
+            cohesion = (cohesion - transform.position);
+        }
+
+        // Weight the forces
+        Vector3 force = (boidSeparationWeight * separation) +
+                        (boidAlignmentWeight * alignment) +
+                        (boidCohesionWeight * cohesion);
+
+        return force;
     }
 }

@@ -53,7 +53,7 @@ public class CameraController : MonoBehaviour
             Vector3 fromPosition = player.position + Vector3.up * 1.5f;
             RaycastHit hit;
             Vector3 finalPosition = desiredPosition;
-            if (Physics.Linecast(fromPosition, desiredPosition, out hit))
+            if (Physics.Linecast(fromPosition, desiredPosition, out hit, ~0, QueryTriggerInteraction.Ignore))
             {
                 finalPosition = hit.point + hit.normal * 0.3f;
             }

@@ -17,7 +17,7 @@ public class PlayerMovement : MonoBehaviour
     public Animator animator;
     public BallDribble ballDribbler; // Your ball dribble component
     
-    private bool isSliding = false;
+    public bool isSliding = false;
     public float slideSpeedMultiplier = 1.5f;
     public float slideDuration = 1.0335f;
     
@@ -42,10 +42,12 @@ public class PlayerMovement : MonoBehaviour
     public float currentHealth = 100f;
     public float knockbackForce = 10f;
     public SliderColorChanger healthBar;
+    public bool ignoreKnockback = false;
+
     // ------------------------------------------------------
     
     public float knockbackDuration = 0.5f; // Minimum duration to block input
-    private bool isKnockbackActive = false;
+    public bool isKnockbackActive = false;
     
     // Damage cooldown: only one damage instance per knockback trigger
     private float lastDamageTime = -100f;
@@ -261,7 +263,7 @@ public class PlayerMovement : MonoBehaviour
         }
     }
     
-    void TakeDamage(float damage, ControllerColliderHit hit)
+    public void TakeDamage(float damage, ControllerColliderHit hit)
     {
         currentHealth -= damage;
         if (currentHealth < 0)
@@ -271,18 +273,45 @@ public class PlayerMovement : MonoBehaviour
         
         animator.Play("Knockback", 0, 0f);
         
-        Vector3 knockbackDir = -new Vector3(velocity.x, 0, velocity.z);
-        if (knockbackDir == Vector3.zero)
+        Vector3 knockbackDir;
+        if (!ignoreKnockback)  // Only apply if not ignoring knockback.
         {
-            knockbackDir = -transform.forward;
+            if (hit != null)
+            {
+                knockbackDir = -new Vector3(velocity.x, 0, velocity.z);
+                if (knockbackDir == Vector3.zero)
+                {
+                    knockbackDir = -transform.forward;
+                }
+            }
+            else
+            {
+                knockbackDir = new Vector3(0, 0, -1);
+            }
+            knockbackDir.Normalize();
+            
+            velocity.x = knockbackDir.x * knockbackForce;
+            velocity.z = knockbackDir.z * knockbackForce;
         }
-        knockbackDir.Normalize();
-        
-        velocity.x = knockbackDir.x * knockbackForce;
-        velocity.z = knockbackDir.z * knockbackForce;
+        else
+        {
+            // When ignoring knockback, just zero out velocity.
+            velocity.x = 0;
+            velocity.z = 0;
+        }
         
         StartCoroutine(KnockbackRecovery());
     }
+
+    public void OverrideVelocity(Vector3 newVelocity)
+    {
+        velocity.x = 0;
+        velocity.y = 0;
+        velocity = newVelocity;
+        ApplyGravity();
+    }
+
+
     
     IEnumerator KnockbackRecovery()
     {

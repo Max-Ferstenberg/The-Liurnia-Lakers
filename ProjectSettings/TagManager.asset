@@ -8,6 +8,9 @@ TagManager:
   - Floor
   - SpinningLogTrap
   - SwingingAxe
+  - Prop
+  - Trap
+  - Stairs
   layers:
   - Default
   - TransparentFX
@@ -20,7 +23,7 @@ TagManager:
   - Floor
   - Obstacle
   - Wall
-  - 
+  - Camera
   - 
   - 
   - 
