@@ -122,7 +122,7 @@ public class EnemyAI : MonoBehaviour
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
         if (grid != null)
         {
-            grid.Initialize(elevationThreshold, player);
+            grid.Initialize(player);
         }
         if (player == null)
         {
@@ -397,8 +397,6 @@ public class EnemyAI : MonoBehaviour
     void FixedUpdate()
     {
         if (player == null) return;
-        UpdatePathPriorities();
-
         Vector3 baseMovement = Vector3.zero;
 
         if (currentState == State.Patrol)
@@ -445,14 +443,7 @@ public class EnemyAI : MonoBehaviour
             float speedFactor = Mathf.Clamp01(1f - (steering.magnitude / (obstacleAvoidanceForce * 2f)));
             baseMovement = desiredDir * approachSpeed * speedFactor;
         }
-        
-        // Apply any stair movement constraints.
-        if (IsOnStairs())
-        {
-            approachSpeed = Mathf.Clamp(approachSpeed * 1.2f, 1f, 3f);
-            rb.linearVelocity = Vector3.ClampMagnitude(rb.linearVelocity, 4f);
-            return; // Skip vertical adjustment on stairs
-        }
+    
         
         // State-based movement override.
         if (currentState == State.Attack || isCollidingWithPlayer)
@@ -487,42 +478,6 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
-
-    [Header("Elevation Settings")]
-    public float elevationThreshold = 1.5f; // Minimum height difference to use stairs
-    public float stairApproachDistance = 3f;
-
-    void UpdatePathPriorities()
-    {
-        if (grid == null || player == null) return;
-
-        Node playerNode = grid.NodeFromWorldPoint(player.position);
-        bool playerOnStairs = playerNode != null && playerNode.movementCost == 3f;
-
-        foreach (Node node in grid.AllNodes)
-        {
-            if (node == null) continue;
-            
-            // Make stair endpoints highly desirable
-            if (playerOnStairs && node.movementCost == 3f)
-            {
-                node.movementCost = 0.5f; // Extreme priority
-            }
-            else if (node.movementCost == 3f)
-            {
-                node.movementCost = 3f; // Reset
-            }
-        }
-    }
-
-    bool NeedsStairs()
-    {
-        // More robust stair detection
-        float elevationDifference = player.position.y - transform.position.y;
-        return Mathf.Abs(elevationDifference) > elevationThreshold && 
-            Mathf.Abs(elevationDifference) < 3 * elevationThreshold;
-    }
-
     Vector3 CheckForwardLedge(Vector3 forwardDir)
     {
         int missingGroundCount = 0;
@@ -550,13 +505,6 @@ public class EnemyAI : MonoBehaviour
         return Vector3.zero;
     }
 
-    bool IsOnStairs()
-    {
-        RaycastHit hit;
-        return Physics.Raycast(transform.position, Vector3.down, out hit, 1.5f, groundMask) && 
-            hit.collider.CompareTag("Stairs");
-    }
-
     [Header("Advanced Steering")]
     public float obstacleBumpForce = 2f;
     public float gapDetectionWidth = 0.5f;
@@ -567,7 +515,7 @@ public class EnemyAI : MonoBehaviour
         Vector3 steering = Vector3.zero;
         Vector3 pathDirection = GetPathDirection();
         
-        // Existing lateral ledge detection (immediate vicinity)
+        // Lateral ledge detection (always active now)
         Vector3[] ledgeRays = {
             pathDirection,
             pathDirection + transform.right * 0.3f,
@@ -615,16 +563,11 @@ public class EnemyAI : MonoBehaviour
         // Forward ledge detection along a ray extending ahead
         Vector3 forwardLedgeSteering = CheckForwardLedge(pathDirection);
         steering += forwardLedgeSteering;
-        
-        if (steering.magnitude > edgeAvoidanceForce * 0.5f)
-        {
-            Quaternion safeRot = Quaternion.LookRotation(steering.normalized, Vector3.up);
-            transform.rotation = Quaternion.Slerp(transform.rotation, safeRot, rotationSpeed * 2 * Time.fixedDeltaTime);
-        }
-        
+
         // Maintain 90% path following priority
         steering = (pathDirection * approachSpeed * 0.8f) + (steering * 0.2f);
         
+        // Smooth steering transitions
         return Vector3.Lerp(lastSteering, steering, 0.9f);
     }
 
@@ -641,19 +584,16 @@ public class EnemyAI : MonoBehaviour
     // Follow the ground so the enemy descends/ascends stairs gracefully.
     void FollowGround()
     {
-        Vector3 rayOrigin = transform.position + Vector3.up * 0.5f;
+        // Keep basic ground following but remove stair special cases
         RaycastHit hit;
-
-        if (Physics.Raycast(rayOrigin, Vector3.down, out hit, groundCheckDistance + 1f, groundMask))
+        if(Physics.Raycast(transform.position, Vector3.down, out hit, groundCheckDistance, groundMask))
         {
             float targetY = hit.point.y;
-            float newY = Mathf.Lerp(transform.position.y, targetY, groundFollowSpeed * Time.fixedDeltaTime);
-            rb.position = new Vector3(rb.position.x, newY, rb.position.z);
-        }
-        else
-        {
-            // Emergency stop if no ground detected
-            rb.linearVelocity = Vector3.zero;
+            transform.position = new Vector3(
+                transform.position.x,
+                Mathf.Lerp(transform.position.y, targetY, groundFollowSpeed * Time.deltaTime),
+                transform.position.z
+            );
         }
     }
 
@@ -685,49 +625,16 @@ public class EnemyAI : MonoBehaviour
             Debug.DrawRay(origin, direction * maxViewDistance, Color.blue);
         }
 
-        float verticalDifference = Mathf.Abs(player.position.y - origin.y);
-        float verticalThreshold = 5f;
-        if (verticalDifference > verticalThreshold)
-        {
-            Debug.Log("Vertical difference too high: " + verticalDifference);
-            canSee = false;
-        }
-
         return canSee;
     }
 
     // Global path recalculation.
     void RecalculatePath()
     {
-        if (grid != null && player != null)
+        if(grid != null && player != null)
         {
-            Node playerNode = grid.NodeFromWorldPoint(player.position);
-            
-            if (playerNode.movementCost == 3f) // Player is on stairs
-            {
-                // Find nearest stair entrypoint at the enemy's current elevation
-                Node stairEntry = grid.FindStairEntrypoint(transform.position);
-                
-                // Path to stair entrypoint (flat ground)
-                List<Node> pathToEntry = AStarPathfinder.FindPath(grid, transform.position, stairEntry.worldPosition);
-                
-                // Path from entrypoint to player (stairs)
-                List<Node> pathFromEntry = AStarPathfinder.FindPath(grid, stairEntry.worldPosition, player.position);
-
-                if (pathToEntry != null && pathFromEntry != null && 
-                    pathToEntry.Count > 0 && pathFromEntry.Count > 0)
-                {
-                    currentPath = new List<Node>(pathToEntry);
-                    currentPath.AddRange(pathFromEntry);
-                    currentPathIndex = 0;
-                }
-            }
-            else
-            {
-                // Default pathfinding
-                currentPath = AStarPathfinder.FindPath(grid, transform.position, player.position);
-                currentPathIndex = 0;
-            }
+            currentPath = AStarPathfinder.FindPath(grid, transform.position, player.position);
+            currentPathIndex = 0;
         }
     }
 
@@ -744,7 +651,7 @@ public class EnemyAI : MonoBehaviour
             }
         }
 
-        // Initialize rayDirections if null (prevents errors in Edit Mode)
+        // Initialize rayDirections if null
         if (rayDirections == null)
         {
             rayDirections = new Vector3[]
@@ -765,26 +672,14 @@ public class EnemyAI : MonoBehaviour
             }
         }
 
-        // Draw steering force (only if steering is initialized)
+        // Draw steering force
         if (steering != null)
         {
             Gizmos.color = Color.red;
             Gizmos.DrawRay(transform.position, steering * 2f);
         }
-
-        if (grid != null && grid.Nodes != null)
-        {
-            foreach (Node n in grid.Nodes)
-            {
-                if (n != null && n.movementCost == 3f)
-                {
-                    Gizmos.color = Color.cyan;
-                    Gizmos.DrawCube(n.worldPosition, Vector3.one * (grid.nodeDiameter * 0.8f));
-                    Debug.DrawLine(n.worldPosition, n.worldPosition + Vector3.up * 2, Color.cyan);
-                }
-            }
-        }
     }
+
 
     // Collision callbacks to detect if enemy is in contact with the player.
     void OnCollisionEnter(Collision collision)
