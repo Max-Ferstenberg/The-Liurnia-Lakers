@@ -10,15 +10,17 @@ public class BallDribble : MonoBehaviour
     public KeyCode throwButton;
     public AudioSource bounceAudioSource;
     public AudioClip bounceSound;
+    public AudioClip throwSound;
     public float throwForce;
     private Rigidbody rb;
     private bool isPalmed = false;
-    private bool isDribbling = false;
+    public bool isDribbling = false;
     private bool bounced = true;
     public bool isHeld = false;
-    private bool lockedToHand = false;
+    public bool lockedToHand = false;
     public float maxRollingForce;
     public PlayerMovement playerMovement;
+    private bool undribbable = false;
 
     void Start()
     {
@@ -59,14 +61,8 @@ public class BallDribble : MonoBehaviour
             if (isDribbling)
             {
                 Vector3 newPosition = new Vector3(handTarget.position.x, Mathf.Min(handTarget.position.y, transform.position.y), handTarget.position.z);
-                if (CanMoveToPosition(newPosition))
-                {
-                    transform.position = newPosition;
-                }
-                else
-                {
-                    ApplyRollingForce(newPosition);
-                }
+                transform.position = newPosition;
+                
 
                 if (isPalmed)
                 {
@@ -76,41 +72,15 @@ public class BallDribble : MonoBehaviour
         }
     }
 
-    void ApplyRollingForce(Vector3 targetPosition)
-    {
-        Vector3 direction = new Vector3(targetPosition.x - transform.position.x, 0, targetPosition.z - transform.position.z);
-        float distance = direction.magnitude;
 
-        if (distance > 0.01f)
-        {
-            direction.Normalize();
-            float forceMagnitude = Mathf.Clamp(distance / Time.deltaTime, 0, maxRollingForce);
-            rb.AddForce(direction * forceMagnitude, ForceMode.Acceleration);
-        }
-    }
-
-    private bool CanMoveToPosition(Vector3 targetPosition)
-    {
-        Vector3 direction = targetPosition - transform.position;
-        float distance = direction.magnitude;
-        if (distance > 0.1f)
-        {
-            RaycastHit hit;
-            if (Physics.Raycast(transform.position, direction, out hit, distance))
-            {
-                return false;
-            }
-        }
-        return true;
-    }
 
     public void TryCatchBall()
     {
-        if (isDribbling == false)
+        if (isDribbling == false && undribbable == false)
         {
             CatchBall(pullForce / 5, catchRadius, catchRadius / 3, false, true);
         }
-        else if (bounced == true)
+        else if (bounced == true && undribbable == false)
         {
             CatchBall(pullForce, catchRadius * 3, catchRadius * 3, true, false);
         }
@@ -142,6 +112,7 @@ public class BallDribble : MonoBehaviour
 
     public void BounceBall()
     {
+        if (!playerMovement.isGrounded) return;
         if (lockedToHand == true) {
             Vector3 releaseVelocity = playerMovement.GetVelocity();
             isPalmed = false;
@@ -156,6 +127,8 @@ public class BallDribble : MonoBehaviour
             rb.useGravity = true;
         } else
         {
+            isPalmed = false;
+            isHeld = false;
             ReleaseBall();
         }
             
@@ -199,29 +172,40 @@ public class BallDribble : MonoBehaviour
         rb.linearVelocity = playerMovement.GetVelocity();
         Vector3 cameraForward = Camera.main.transform.forward;
         cameraForward.Normalize();
+        Vector3 throwDirection = cameraForward + Vector3.up * 2f;
         rb.AddForce(cameraForward * throwForce, ForceMode.Impulse);
+        StartCoroutine(placeOnCooldown());
+        bounceAudioSource.volume = 1f;
+        bounceAudioSource.PlayOneShot(throwSound);
+    }
+
+    private IEnumerator  placeOnCooldown()
+    {
+        if (undribbable == false)
+        {
+            undribbable = true;
+            yield return new WaitForSeconds(1f);
+            undribbable = false;
+        }
     }
 
 
     private void OnCollisionEnter(Collision collision)
     {
-        if (isDribbling == true)
-        {
-            rb.linearVelocity = new Vector3(0, rb.linearVelocity.y, 0);
-        }
         StartCoroutine(CheckBounce());
     }
 
     private IEnumerator CheckBounce()
     {
         yield return new WaitForFixedUpdate();
-        if (rb.linearVelocity.y > 0 && isDribbling == true)
+        float speed = rb.linearVelocity.magnitude;
+        if (isDribbling == true && bounced == false)
         {
+            Vector3 directionToHand = (handTarget.position - transform.position).normalized;
+            rb.linearVelocity = directionToHand * speed;
             bounced = true;
         }
-        float speed = rb.linearVelocity.magnitude;
         bounceAudioSource.volume = Mathf.Clamp(speed / 20f, 0.2f, 1f);
         bounceAudioSource.PlayOneShot(bounceSound);
     }
-
 }

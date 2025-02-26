@@ -13,6 +13,9 @@ public class EnemyAI : MonoBehaviour
     public float retreatTime = 1.5f;
     public float attackCooldown = 3.0f;
 
+    public AudioSource enemyAudioSource;
+    public AudioClip stunSound;
+
     private Rigidbody rb;
     private Animator anim;
     private Transform player;
@@ -24,8 +27,14 @@ public class EnemyAI : MonoBehaviour
 
     private bool attackTriggered = false;
 
-    private enum State { Approach, Strafe, Retreat, Attack }
+    private enum State { Approach, Strafe, Retreat, Attack, Stunned }
     private State currentState;
+
+    private bool stunned = false;
+    public float stunDuration = 5f;
+    private float stunTimer = 0f;
+
+    public GameObject hoop;
 
     void Start()
     {
@@ -49,6 +58,21 @@ public class EnemyAI : MonoBehaviour
     {
         if (player == null)
             return;
+
+        if (stunned)
+        {
+            stunTimer -= Time.deltaTime;
+            BasketballHoop hoopScript = hoop.GetComponent<BasketballHoop>();
+            if (stunTimer <= 0 && hoopScript.dunking == false)
+            {
+                stunned = false;
+                currentState = State.Approach;
+                stateTimer = approachDuration;
+                anim.SetBool("IsStunned", false);
+                hoop.SetActive(false);
+            }
+            return;
+        }
 
         stateTimer -= Time.deltaTime;
         attackTimer -= Time.deltaTime;
@@ -145,13 +169,48 @@ public class EnemyAI : MonoBehaviour
                 anim.SetFloat("Vertical", 0f, dampTime, Time.deltaTime);
                 anim.SetFloat("Horizontal", 0f, dampTime, Time.deltaTime);
                 break;
+            case State.Stunned:
+                anim.SetFloat("Vertical", 0f, dampTime, Time.deltaTime);
+                anim.SetFloat("Horizontal", 0f, dampTime, Time.deltaTime);
+                break;
         }
 
     }
 
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("Basketball"))
+        {
+            BallDribble ballDribble = collision.gameObject.GetComponent<BallDribble>();
+            if (ballDribble != null && ballDribble.isHeld == false && ballDribble.lockedToHand == false && ballDribble.isDribbling == false)
+            {
+                Stun();
+            }
+        }
+    }
+
+    public void Stun()
+    {
+        enemyAudioSource.PlayOneShot(stunSound);
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        rb.constraints = RigidbodyConstraints.FreezeAll;
+        stunned = true;
+        stunTimer = stunDuration;
+        currentState = State.Stunned;
+        anim.SetBool("IsStunned", true);
+        hoop.SetActive(true);
+    }
+
+    public void Kill()
+    {
+        Destroy(gameObject);
+    }
+
+
     void FixedUpdate()
     {
-        if (player == null)
+        if (player == null || stunned)
             return;
 
         Vector3 directionToPlayer = (player.position - transform.position).normalized;
@@ -174,6 +233,9 @@ public class EnemyAI : MonoBehaviour
                 movement = -directionToPlayer * retreatSpeed;
                 break;
             case State.Attack:
+                movement = Vector3.zero;
+                break;
+            case State.Stunned:
                 movement = Vector3.zero;
                 break;
         }
