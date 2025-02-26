@@ -12,7 +12,7 @@ public class PlayerMovement : MonoBehaviour
     public float gravity = -9.81f;
     
     private Vector3 velocity;
-    private bool isGrounded;
+    public bool isGrounded;
     
     public Animator animator;
     public BallDribble ballDribbler; // Your ball dribble component
