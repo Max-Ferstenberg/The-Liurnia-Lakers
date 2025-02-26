@@ -11,6 +11,8 @@ TagManager:
   - Prop
   - Trap
   - Stairs
+  - Boulder
+  - Wolf
   layers:
   - Default
   - TransparentFX

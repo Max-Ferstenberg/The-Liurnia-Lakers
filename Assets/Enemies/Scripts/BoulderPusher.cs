@@ -14,7 +14,10 @@ public class BoulderPusher : MonoBehaviour
     public float boulderPushForce = 500f;
     
     private bool pushTriggered = false;
-    
+    public EnemyAI enemyAI;
+
+    public RuntimeAnimatorController pushAnimator;
+    public RuntimeAnimatorController fallbackAnimator;
     // Called by the trigger zone when the player enters.
 
     void Start()
@@ -58,11 +61,7 @@ public class BoulderPusher : MonoBehaviour
                 rb.AddTorque(transform.right * (boulderPushForce * 0.5f), ForceMode.Impulse);
             }
         }
-    }
-
-    // (Optional) Reset state after push animation finishes.
-    public void EndPush()
-    {
-        pushTriggered = false;
+        anim.runtimeAnimatorController = fallbackAnimator;
+        enemyAI.enabled = true;
     }
 }
