@@ -1,6 +1,9 @@
 using System.Collections;
 using UnityEngine;
 
+
+
+//Simple script that just registers when the player is within the hitbox of the meteor attack and calls necessary functions for player to take damage, attaches to meteor prefab on spawn during attack
 public class MeteorDamage : MonoBehaviour
 {
     [Tooltip("Damage to deal when the player enters the meteor area.")]

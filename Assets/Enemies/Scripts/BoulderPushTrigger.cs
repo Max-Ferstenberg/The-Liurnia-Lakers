@@ -1,5 +1,7 @@
 using UnityEngine;
 
+//Simple script that checks when the player enters range for a boulder trap
+
 public class BoulderPushTrigger : MonoBehaviour
 {
     public BoulderPusher boulderPusher;
@@ -13,8 +15,6 @@ public class BoulderPushTrigger : MonoBehaviour
         }
     }
 
-    
-    // Optional: visualize the trigger zone.
     void OnDrawGizmos()
     {
         Collider col = GetComponent<Collider>();

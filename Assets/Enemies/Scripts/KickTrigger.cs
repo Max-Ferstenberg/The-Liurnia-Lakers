@@ -1,8 +1,9 @@
 using UnityEngine;
 
+
+//Just checks when the player enters an area to trigger the timings for one trap/interaction and calls function in other script
 public class KickTrigger : MonoBehaviour
 {
-    // Reference to the enemy that will perform the kick.
     public DoorKicker doorKicker; 
 
     void OnTriggerEnter(Collider other)
@@ -10,17 +11,6 @@ public class KickTrigger : MonoBehaviour
         if(other.CompareTag("Player"))
         {
             doorKicker.TriggerKick(other.gameObject);
-        }
-    }
-    
-    // Optional: Visualize the trigger area.
-    void OnDrawGizmos()
-    {
-        Collider col = GetComponent<Collider>();
-        if(col != null)
-        {
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireCube(col.bounds.center, col.bounds.size);
         }
     }
 }

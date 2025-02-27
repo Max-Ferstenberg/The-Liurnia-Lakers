@@ -7,18 +7,19 @@ public class ElevatorTrigger : MonoBehaviour
     void Start()
     {
         elevator = GetComponentInParent<Elevator>();
-        if (elevator == null)
-            Debug.LogError("ElevatorTrigger: No ElevatorPlatform component found in parent.");
     }
 
     void OnTriggerEnter(Collider other)
     {
+        //Check that the player is the one on the elevator
         if (other.CompareTag("Player"))
         {
+            //Notify parent elevator that player has entered, since the elevator itself uses it's own collider mesh and rigidbody, we hover a separate trigger just above the elevator
             elevator.PlayerEntered(other);
         }
     }
 
+    //Same as above, but for leaving the elevator
     void OnTriggerExit(Collider other)
     {
         if (other.CompareTag("Player"))

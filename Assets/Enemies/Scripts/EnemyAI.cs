@@ -3,18 +3,15 @@ using UnityEngine.AI;
 
 public class EnemyAI : MonoBehaviour
 {
-    // Movement & combat parameters
-    public float aggroRange = 10f;         // Enemy becomes active within this range.
+    public float aggroRange = 10f;       
     public float attackDistance = 2f;
     public float attackCooldown = 3.0f;
-    public float attackDuration = 0.5f; // how long the attack state lasts
+    public float attackDuration = 0.5f; 
 
-    // Two attack points for hit detection.
     public Transform attackPoint1;
     public Transform attackPoint2;
-    public float attackRadius = 0.5f;    // radius of the hit detection sphere
-    public float attackDamage = 20f;
-    public float attackPointZOffset = 0.5f; // offset applied in the forward direction
+    public float attackRadius = 0.5f;      public float attackDamage = 20f;
+    public float attackPointZOffset = 0.5f; 
 
     private NavMeshAgent navAgent;
     private Animator anim;
@@ -30,50 +27,42 @@ public class EnemyAI : MonoBehaviour
     public float stunDuration = 5f;
     private float stunTimer = 0f;
 
-    private float attackStateTimer = 0f;  // timer for how long we remain in the Attack state
-    private Vector3 attackDirection;      // locked attack direction
+    private float attackStateTimer = 0f; 
+    private Vector3 attackDirection;     
     private bool damageApplied = false;
 
     public AudioSource enemyAudioSource;
     public AudioClip stunSound;
     public GameObject hoop;
 
-    // Throttling NavMesh updates
-    public float navUpdateInterval = 0.1f;
+    public float navUpdateInterval = 0.1f; 
     private float navUpdateTimer = 0f;
-    private Vector3 smoothedVelocity = Vector3.zero;
+    private Vector3 smoothedVelocity = Vector3.zero; 
 
     void Start()
     {
         navAgent = GetComponent<NavMeshAgent>();
         anim = GetComponent<Animator>();
 
-        // Ensure the NavMeshAgent controls movement
         navAgent.updatePosition = true;
         navAgent.updateRotation = true;
-        // Set explicit parameters (adjust as needed in Inspector)
         navAgent.speed = 5f;
         navAgent.acceleration = 8f;
         navAgent.angularSpeed = 120f;
         navAgent.stoppingDistance = 0.1f;
 
-        // Find player
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
         if (playerObj != null)
             player = playerObj.transform;
-        else
-            Debug.LogError("Player not found! Make sure your player GameObject is tagged as 'Player'.");
 
-        // Initialize state to Idle
         currentState = State.Idle;
         attackTimer = 0f;
 
-        // If using a Rigidbody for collisions, ensure it's kinematic
+        //force kinematic, otherwise rigidbody and navmesh agent don't work together
         Rigidbody rb = GetComponent<Rigidbody>();
         if (rb)
             rb.isKinematic = true;
 
-        // Ensure Animator Root Motion is off (so NavMeshAgent movement isn't overridden)
         anim.applyRootMotion = false;
     }
 
@@ -82,20 +71,19 @@ public class EnemyAI : MonoBehaviour
         if (player == null)
             return;
 
-        // Check if the player is within aggro range.
+        //Check if the player is within aggro range
         float distance = Vector3.Distance(transform.position, player.position);
         if (distance > aggroRange)
         {
             currentState = State.Idle;
             attackTriggered = false;
-            // Optionally, update animator to show idle behavior.
             anim.SetFloat("Vertical", 0f);
             anim.SetFloat("Horizontal", 0f);
             return;
         }
         else
         {
-            // Player is within aggro range: switch to Approach if not attacking.
+            //Player is within aggro range: switch to Approach if not attacking
             if (currentState == State.Idle)
                 currentState = State.Approach;
         }
@@ -114,13 +102,10 @@ public class EnemyAI : MonoBehaviour
             return;
         }
 
-        // Update the cooldown timer
         attackTimer -= Time.deltaTime;
 
-        // --- State Transitions ---
         if (currentState == State.Attack)
         {
-            // While attacking, count down the attack state duration
             attackStateTimer -= Time.deltaTime;
             if (attackStateTimer <= 0f)
             {
@@ -132,15 +117,14 @@ public class EnemyAI : MonoBehaviour
         {
             if (!attackTriggered)
             {
-                // Lock in attack direction toward the player.
+                //Lock in attack direction toward the player
                 attackDirection = (player.position - transform.position).normalized;
                 int attackIndex = Random.Range(1, 4);
                 anim.SetTrigger("Attack" + attackIndex);
                 attackTriggered = true;
-                damageApplied = false;  // Reset damage flag for this attack
-                attackTimer = attackCooldown;    // start the cooldown
-                attackStateTimer = attackDuration; // remain in attack state for this duration
-                Debug.Log("Enemy attacks! Attack " + attackIndex);
+                damageApplied = false;  //ensure damage is only applied once to player
+                attackTimer = attackCooldown;
+                attackStateTimer = attackDuration; 
             }
             currentState = State.Attack;
         }
@@ -150,7 +134,6 @@ public class EnemyAI : MonoBehaviour
             attackTriggered = false;
         }
 
-        // --- Animator Updates ---
         float dampTime = 0.2f;
         if (currentState == State.Approach)
         {
@@ -179,33 +162,31 @@ public class EnemyAI : MonoBehaviour
             return;
         navUpdateTimer = navUpdateInterval;
 
-        // Only move if not idle.
         if (currentState == State.Approach)
         {
+            // In Approach state, set the destination to the player's current position
             Vector3 targetPosition = player.position;
             navAgent.SetDestination(targetPosition);
         }
         else if (currentState == State.Attack)
         {
-            // During attack, lock on: keep destination at current position.
             navAgent.SetDestination(transform.position);
         }
         else if (currentState == State.Idle)
         {
-            // If idle, remain in place.
             navAgent.SetDestination(transform.position);
         }
 
-        // Smooth out movement
+        //Attempts to smooth out movement for the reason stated below (it kind of works, but not great)
         float smoothingFactor = 10f;
         smoothedVelocity = Vector3.Lerp(smoothedVelocity, navAgent.desiredVelocity, Time.fixedDeltaTime * smoothingFactor);
         float speedMultiplier = 5f;
         Vector3 movement = smoothedVelocity * Time.fixedDeltaTime * speedMultiplier;
 
-        // Use NavMeshAgent.Move() for manual movement.
+        //This is not ideal, for the life of me I could not figure out why the navmesh agent was not moving, so I have had to force movement, which works, but the movement is really jittery in game because of this, I tried many, many, many things and this is the only thing that seemed to get it moving. I am certain I probably just overlooked something silly, but here we are.
         navAgent.Move(movement);
 
-        // If attacking, force rotation to lock on to the attack direction.
+        // When attacking, force the enemy to face the locked attack direction
         if (currentState == State.Attack)
         {
             Quaternion targetRotation = Quaternion.LookRotation(attackDirection);
@@ -213,15 +194,14 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
-    // This method is called via an Animation Event at the appropriate frame.
     public void DealDamage()
     {
         if (damageApplied)
-            return; // Already applied damage this attack
+            return; 
 
         bool hitPlayer = false;
         
-        // Check Attack Point 1
+        //Check Attack Point 1 for collision
         if (attackPoint1 != null)
         {
             Vector3 adjustedAttackPos1 = attackPoint1.position + transform.forward * attackPointZOffset;
@@ -236,13 +216,13 @@ public class EnemyAI : MonoBehaviour
                         pm.TakeDamage(attackDamage, null);
                         hitPlayer = true;
                         Debug.Log("Damage dealt to player from " + attackPoint1.name);
-                        break; // Only one instance of damage per attack
+                        break;
                     }
                 }
             }
         }
         
-        // If not yet hit from attackPoint1, check Attack Point 2
+        //If no hit was detected from Attack Point 1, check Attack Point 2
         if (!hitPlayer && attackPoint2 != null)
         {
             Vector3 adjustedAttackPos2 = attackPoint2.position + transform.forward * attackPointZOffset;

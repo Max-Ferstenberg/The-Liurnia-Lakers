@@ -13,7 +13,7 @@ public class Elevator : MonoBehaviour
     [Tooltip("The distance the platform moves upward (or downward) when activated.")]
     public float moveDistance = 5f;
     [Tooltip("The time (in seconds) it takes for the platform to move.")]
-    public float climbTime = 1f;
+    public float climbTime = 1f; 
 
     [Header("Magic Effect Child References")]
     [Tooltip("Reference to the Sparks child object (should be inactive by default).")]
@@ -21,7 +21,6 @@ public class Elevator : MonoBehaviour
     [Tooltip("Reference to the Sides child object (should be inactive by default).")]
     public GameObject sides;
 
-    // Internal state.
     private bool playerOnPlatform = false;
     private float timeOnPlatform = 0f;
     private bool isAtTop = false;
@@ -29,9 +28,7 @@ public class Elevator : MonoBehaviour
     private Vector3 originalPosition;
     private Transform playerTransform;
 
-    // Flag to mark that the player has exited while the elevator is at the top.
     private bool hasExitedAtTop = false;
-    // Controls whether lighting effects should activate.
     private bool shouldActivateEffects = false;
 
     void Start()
@@ -41,48 +38,42 @@ public class Elevator : MonoBehaviour
         if (sides != null) sides.SetActive(false);
     }
 
-    // Called by the ElevatorTrigger child when the player steps on the elevator.
+    // Triggered when the player enters the elevator trigger collider (handled in a different script)
     public void PlayerEntered(Collider other)
     {
         playerOnPlatform = true;
         timeOnPlatform = 0f;
         playerTransform = other.transform;
-        playerTransform.parent = transform;
-        // Allow lighting effects to activate when the player enters.
-        shouldActivateEffects = true;
+        playerTransform.parent = transform; //Parent the player to the elevator
+        shouldActivateEffects = true; //activation of effects
     }
 
-    // Called by the ElevatorTrigger child when the player steps off the elevator.
     public void PlayerExited(Collider other)
     {
         playerOnPlatform = false;
-        timeOnPlatform = 0f;
+        timeOnPlatform = 0f; // Reset timer on exit
         if (playerTransform != null && playerTransform.parent == transform)
-            playerTransform.parent = null;
+            playerTransform.parent = null; //Detach player from elevator
         playerTransform = null;
 
-        // If the elevator is at the top, note that the player has left.
-        if (isAtTop)
+        if (isAtTop) //Mark that the player exited at the top
             hasExitedAtTop = true;
         
-        // Only turn off lighting effects if the elevator is not moving.
+        //Disable effects if the elevator is stationary
         if (!isMoving)
         {
             if (sparks != null) sparks.SetActive(false);
             if (sides != null) sides.SetActive(false);
         }
-        // Prevent effects from reactivating until the next entry.
-        shouldActivateEffects = false;
+        shouldActivateEffects = false; //Prevent further effect activation until re-entry
     }
 
     void Update()
     {
-        // Only update if the player is on the platform and the elevator isn't moving.
         if (playerOnPlatform && !isMoving)
         {
             timeOnPlatform += Time.deltaTime;
             
-            // Activate effects if allowed and the delay has passed.
             if (shouldActivateEffects && timeOnPlatform >= sparksActivationTime)
             {
                 if (sparks != null && !sparks.activeSelf)
@@ -91,14 +82,14 @@ public class Elevator : MonoBehaviour
                     sides.SetActive(true);
             }
             
-            // Ascend if at the bottom.
+            //Initiate upward movement if at the bottom and time threshold met
             if (!isAtTop && timeOnPlatform >= moveTriggerTime)
             {
                 StartCoroutine(MovePlatform(transform.position, originalPosition + Vector3.up * moveDistance, climbTime));
                 isAtTop = true;
                 timeOnPlatform = 0f;
             }
-            // Descend only if at the top and the player had exited before re-entering.
+            //Initiate downward movement if at the top, player exited, and time threshold met
             else if (isAtTop && hasExitedAtTop && timeOnPlatform >= moveTriggerTime)
             {
                 StartCoroutine(MovePlatform(transform.position, originalPosition, climbTime));
@@ -109,23 +100,19 @@ public class Elevator : MonoBehaviour
         }
     }
 
-    // Coroutine to move the platform smoothly.
+    //interpolates the platform's position between two points over a set duration
     IEnumerator MovePlatform(Vector3 startPos, Vector3 endPos, float duration)
     {
         isMoving = true;
         
-        // Ensure that the lighting effects are on while the elevator is moving.
+        //visual effects during movement
         if (sparks != null) sparks.SetActive(true);
         if (sides != null) sides.SetActive(true);
 
         float elapsed = 0f;
         Rigidbody rb = GetComponent<Rigidbody>();
-        if (rb == null)
-        {
-            Debug.LogError("No Rigidbody found on the elevator. Please add one and set it to Kinematic.");
-            yield break;
-        }
         
+        //linear interpolation between start and end positions
         while (elapsed < duration)
         {
             Vector3 newPos = Vector3.Lerp(startPos, endPos, elapsed / duration);
@@ -133,11 +120,11 @@ public class Elevator : MonoBehaviour
             elapsed += Time.deltaTime;
             yield return null;
         }
-        rb.MovePosition(endPos);
+        rb.MovePosition(endPos); //final position
         isMoving = false;
         timeOnPlatform = 0f;
         
-        // Once movement is complete, turn off the lighting effects.
+        //Deactivate visual effects after movement
         if (sparks != null) sparks.SetActive(false);
         if (sides != null) sides.SetActive(false);
         shouldActivateEffects = false;

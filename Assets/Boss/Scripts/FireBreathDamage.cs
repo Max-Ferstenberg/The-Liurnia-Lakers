@@ -1,5 +1,9 @@
 using UnityEngine;
 
+
+
+//Simple script that just registers when the player is within the hitbox of the fire breath and calls necessary functions for player to take damage, attaches to meteor prefab on spawn during attack
+
 public class FireBreathDamage : MonoBehaviour
 {
     [Tooltip("Damage to deal when the player enters the fire breath area.")]
