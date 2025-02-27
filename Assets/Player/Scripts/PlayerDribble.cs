@@ -27,7 +27,12 @@ public class PlayerDribble : MonoBehaviour
         {
             ball.BounceBall();
         }
-    }   
+    }
+
+    public void Dunk()
+    {
+        ball.Dunk();
+    }
 
     void FixedUpdate () {
 

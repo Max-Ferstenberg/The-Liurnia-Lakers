@@ -1,17 +1,22 @@
 using UnityEngine;
 using UnityEngine.AI;
+using System.Collections;
 
 public class EnemyAI : MonoBehaviour
 {
     public float aggroRange = 10f;       
     public float attackDistance = 2f;
     public float attackCooldown = 3.0f;
-    public float attackDuration = 0.5f; 
 
-    public Transform attackPoint1;
+    private Transform attackPoint1;
     public Transform attackPoint2;
-    public float attackRadius = 0.5f;      public float attackDamage = 20f;
+    public float attackRadius = 0.5f;      
+    public float attackDamage = 20f;
     public float attackPointZOffset = 0.5f; 
+
+    public AudioSource enemyAudioSource;
+    public AudioClip stunSound;
+    public AudioClip deathSound;
 
     private NavMeshAgent navAgent;
     private Animator anim;
@@ -33,7 +38,7 @@ public class EnemyAI : MonoBehaviour
 
     public AudioSource enemyAudioSource;
     public AudioClip stunSound;
-    public GameObject hoop;
+    private GameObject hoop;
 
     public float navUpdateInterval = 0.1f; 
     private float navUpdateTimer = 0f;
@@ -43,6 +48,9 @@ public class EnemyAI : MonoBehaviour
     {
         navAgent = GetComponent<NavMeshAgent>();
         anim = GetComponent<Animator>();
+
+        enemyAudioSource = GetComponent<AudioSource>();
+        hoop = transform.Find("Hoop").gameObject;
 
         navAgent.updatePosition = true;
         navAgent.updateRotation = true;
@@ -273,10 +281,37 @@ public class EnemyAI : MonoBehaviour
 
     public void Kill()
     {
+        enemyAudioSource.PlayOneShot(deathSound);
+        StartCoroutine(DeathAnimation());
+    }
+
+    private IEnumerator DeathAnimation()
+    {
+        anim.Play(anim.GetCurrentAnimatorStateInfo(0).fullPathHash, -1, 0f);
+        yield return new WaitForSeconds(2f);
+        Renderer[] renderers = GetComponentsInChildren<Renderer>();
+        float fadeDuration = 2f;
+        float elapsedTime = 0f;
+
+        while (elapsedTime < fadeDuration)
+        {
+            float alpha = Mathf.Lerp(1f, 0f, elapsedTime / fadeDuration);
+            foreach (Renderer renderer in renderers)
+            {
+                foreach (Material material in renderer.materials)
+                {
+                    Color color = material.color;
+                    color.a = alpha;
+                    material.color = color;
+                }
+            }
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
         Destroy(gameObject);
     }
 
-    void OnDrawGizmosSelected()
+    void FixedUpdate()
     {
         if (attackPoint1 != null)
         {

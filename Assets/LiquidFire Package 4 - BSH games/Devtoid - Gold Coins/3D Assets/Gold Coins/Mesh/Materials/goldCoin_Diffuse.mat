@@ -134,7 +134,11 @@ Material:
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
+<<<<<<< HEAD
 --- !u!114 &4537158338564087375
+=======
+--- !u!114 &5584980835185309795
+>>>>>>> New-Stair-Meshes-for-Physics-and-Pathfinding
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}

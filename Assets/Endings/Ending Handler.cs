@@ -7,6 +7,8 @@ public class EndingHandler : MonoBehaviour
 {
     public Image silhouette;
     public Image text;
+    public Image scoreText;
+    public Image winText;
     public Image black;
     public float silhouetteFadeTime = 1f;
     public float textFadeTime = 2f;
@@ -14,6 +16,7 @@ public class EndingHandler : MonoBehaviour
     public Vector3 zoomScale = new Vector3(1f, 1f, 1f); // How much bigger the text should get
     public AudioSource audioSource;
     public AudioClip deathSound;
+    public AudioClip winSound;
 
     void Start()
     {
@@ -29,8 +32,28 @@ public class EndingHandler : MonoBehaviour
         audioSource.PlayOneShot(deathSound);
     }
 
+    public void ScoreWin()
+    {
+        StartCoroutine(FadeImage(silhouette, silhouetteFadeTime, true));
+        StartCoroutine(FadeImage(scoreText, textFadeTime, true));
+        StartCoroutine(ZoomText(scoreText, zoomDuration, true));
+        audioSource.PlayOneShot(winSound);
+    }
+
+    public void DunkWin()
+    {
+        StartCoroutine(FadeImage(silhouette, silhouetteFadeTime, true));
+        StartCoroutine(FadeImage(winText, textFadeTime, true));
+        StartCoroutine(ZoomText(winText, zoomDuration, true));
+        audioSource.PlayOneShot(winSound);
+    }
+
     IEnumerator FadeImage(Image img, float duration, bool fadeIn)
     {
+        if (fadeIn)
+        {
+            img.rectTransform.localScale = new Vector3(12f, 12f, 12f);
+        }
         float startAlpha = fadeIn ? 0 : 1;
         float endAlpha = fadeIn ? 1 : 0;
         float time = 0;
@@ -46,8 +69,8 @@ public class EndingHandler : MonoBehaviour
 
     IEnumerator ZoomText(Image img, float duration, bool deathMessage)
     {
-        RectTransform rect = text.rectTransform;
-        Vector3 startScale = new Vector3(0.8f, 0.8f, 0.8f);
+        RectTransform rect = img.rectTransform;
+        Vector3 startScale = new Vector3(0.5f, 0.5f, 0.5f);
         float time = 0;
 
         while (time < duration)
