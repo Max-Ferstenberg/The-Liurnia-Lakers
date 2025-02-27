@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 public class EnemyAI : MonoBehaviour
 {
@@ -13,8 +14,9 @@ public class EnemyAI : MonoBehaviour
     public float retreatTime = 1.5f;
     public float attackCooldown = 3.0f;
 
-    public AudioSource enemyAudioSource;
+    private AudioSource enemyAudioSource;
     public AudioClip stunSound;
+    public AudioClip deathSound;
 
     private Rigidbody rb;
     private Animator anim;
@@ -34,12 +36,14 @@ public class EnemyAI : MonoBehaviour
     public float stunDuration = 5f;
     private float stunTimer = 0f;
 
-    public GameObject hoop;
+    private GameObject hoop;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
         anim = GetComponent<Animator>();
+        enemyAudioSource = GetComponent<AudioSource>();
+        hoop = transform.Find("Hoop").gameObject;
 
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
 
@@ -85,8 +89,8 @@ public class EnemyAI : MonoBehaviour
                 if (distance <= attackDistance && attackTimer <= 0)
                 {
                     currentState = State.Attack;
-                    stateTimer = 0.5f; 
-                    attackTriggered = false; 
+                    stateTimer = 0.5f;
+                    attackTriggered = false;
                 }
                 else if (stateTimer <= 0)
                 {
@@ -204,9 +208,35 @@ public class EnemyAI : MonoBehaviour
 
     public void Kill()
     {
-        Destroy(gameObject);
+        enemyAudioSource.PlayOneShot(deathSound);
+        StartCoroutine(DeathAnimation());
     }
 
+    private IEnumerator DeathAnimation()
+    {
+        anim.Play(anim.GetCurrentAnimatorStateInfo(0).fullPathHash, -1, 0f);
+        yield return new WaitForSeconds(2f);
+        Renderer[] renderers = GetComponentsInChildren<Renderer>();
+        float fadeDuration = 2f;
+        float elapsedTime = 0f;
+
+        while (elapsedTime < fadeDuration)
+        {
+            float alpha = Mathf.Lerp(1f, 0f, elapsedTime / fadeDuration);
+            foreach (Renderer renderer in renderers)
+            {
+                foreach (Material material in renderer.materials)
+                {
+                    Color color = material.color;
+                    color.a = alpha;
+                    material.color = color;
+                }
+            }
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+        Destroy(gameObject);
+    }
 
     void FixedUpdate()
     {

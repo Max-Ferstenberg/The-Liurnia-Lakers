@@ -21,6 +21,7 @@ public class BallDribble : MonoBehaviour
     public float maxRollingForce;
     public PlayerMovement playerMovement;
     private bool undribbable = false;
+    private Vector3 hoopPosition;
 
     void Start()
     {
@@ -29,23 +30,26 @@ public class BallDribble : MonoBehaviour
 
     void Update()
     {
-        if (isDribbling == false) {
+        if (isDribbling == false)
+        {
             rb.useGravity = true;
         }
         if (Input.GetKey(throwButton))
         {
-            if (lockedToHand == true) {
+            if (lockedToHand == true)
+            {
                 throwBall();
             }
-            else if (isDribbling == true) {
+            else if (isDribbling == true)
+            {
                 GrabBall(pullForce * 2, false);
-                if (lockedToHand == true) {
+                if (lockedToHand == true)
+                {
                     transform.position = handTarget.position;
                     throwBall();
                 }
             }
         }
-
 
         if (isHeld)
         {
@@ -56,13 +60,12 @@ public class BallDribble : MonoBehaviour
             }
             GrabBall(pullForce * 2, false);
         }
-        else 
+        else
         {
             if (isDribbling)
             {
                 Vector3 newPosition = new Vector3(handTarget.position.x, Mathf.Min(handTarget.position.y, transform.position.y), handTarget.position.z);
                 transform.position = newPosition;
-                
 
                 if (isPalmed)
                 {
@@ -72,19 +75,21 @@ public class BallDribble : MonoBehaviour
         }
     }
 
-
-
     public void TryCatchBall()
     {
         if (isDribbling == false && undribbable == false)
         {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.rotation = Quaternion.identity;
             CatchBall(pullForce / 5, catchRadius, catchRadius / 3, false, true);
         }
         else if (bounced == true && undribbable == false)
         {
             CatchBall(pullForce, catchRadius * 3, catchRadius * 3, true, false);
         }
-        else {
+        else
+        {
             ReleaseBall();
         }
     }
@@ -97,23 +102,24 @@ public class BallDribble : MonoBehaviour
         float horizontalDistance = Vector2.Distance(new Vector2(ballPosition.x, ballPosition.z), new Vector2(handPosition.x, handPosition.z));
         float verticalDistance = ballPosition.y - handPosition.y;
 
-
-        if ((((verticalDistance <= 0) || (catchAboveHand == false)) && (Mathf.Abs(verticalDistance) <= verticalRange)) && (horizontalDistance <= horizontalRange)){
+        if ((((verticalDistance <= 0) || (catchAboveHand == false)) && (Mathf.Abs(verticalDistance) <= verticalRange)) && (horizontalDistance <= horizontalRange))
+        {
             isPalmed = true;
             rb.useGravity = false;
             isDribbling = true;
             GrabBall(force, isMagic);
         }
-        else {
+        else
+        {
             ReleaseBall();
         }
-
     }
 
     public void BounceBall()
     {
         if (!playerMovement.isGrounded) return;
-        if (lockedToHand == true) {
+        if (lockedToHand == true)
+        {
             Vector3 releaseVelocity = playerMovement.GetVelocity();
             isPalmed = false;
             isHeld = false;
@@ -125,35 +131,38 @@ public class BallDribble : MonoBehaviour
                 rb.linearVelocity = releaseVelocity;
             }
             rb.useGravity = true;
-        } else
+        }
+        else
         {
             isPalmed = false;
             isHeld = false;
             ReleaseBall();
         }
-            
     }
 
     private void GrabBall(float force, bool isMagic)
     {
         bounced = true;
-         if (Vector3.Distance(transform.position, handTarget.position) < 0.5)
-            {
-                lockedToHand = true;
-            }
+        if (Vector3.Distance(transform.position, handTarget.position) < 0.5)
+        {
+            lockedToHand = true;
+        }
 
-            if (lockedToHand == true) {
-                transform.position = handTarget.position;
-            }
-            else {
-                Vector3 direction = (handTarget.position - transform.position);
-                rb.linearVelocity += direction * force;
-            }
+        if (lockedToHand == true)
+        {
+            transform.position = handTarget.position;
+        }
+        else
+        {
+            Vector3 direction = (handTarget.position - transform.position);
+            rb.linearVelocity += direction * force;
+        }
     }
 
     public void ReleaseBall()
     {
-        if (isPalmed == true || isHeld == true) {
+        if (isPalmed == true || isHeld == true)
+        {
             BounceBall();
         }
         isHeld = false;
@@ -169,7 +178,9 @@ public class BallDribble : MonoBehaviour
         lockedToHand = false;
         isDribbling = false;
         rb.useGravity = true;
-        rb.linearVelocity = playerMovement.GetVelocity();
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        rb.rotation = Quaternion.identity;
         Vector3 cameraForward = Camera.main.transform.forward;
         cameraForward.Normalize();
         Vector3 throwDirection = cameraForward + Vector3.up * 2f;
@@ -179,7 +190,7 @@ public class BallDribble : MonoBehaviour
         bounceAudioSource.PlayOneShot(throwSound);
     }
 
-    private IEnumerator  placeOnCooldown()
+    private IEnumerator placeOnCooldown()
     {
         if (undribbable == false)
         {
@@ -188,7 +199,6 @@ public class BallDribble : MonoBehaviour
             undribbable = false;
         }
     }
-
 
     private void OnCollisionEnter(Collision collision)
     {
@@ -208,4 +218,28 @@ public class BallDribble : MonoBehaviour
         bounceAudioSource.volume = Mathf.Clamp(speed / 20f, 0.2f, 1f);
         bounceAudioSource.PlayOneShot(bounceSound);
     }
+
+    private void SetDunkPos(Vector3 dunkPos)
+    {
+        hoopPosition = dunkPos;
+    }
+
+    public void Dunk()
+    {
+        isHeld = false;
+        isPalmed = false;
+        lockedToHand = false;
+        isDribbling = false;
+        rb.useGravity = true;
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        rb.rotation = Quaternion.identity;
+        StartCoroutine(placeOnCooldown());
+        bounceAudioSource.volume = 0.5f;
+        bounceAudioSource.PlayOneShot(throwSound);
+        playerMovement.enabled = true;
+        playerMovement.controller.enabled = true;
+    }
 }
+
+
