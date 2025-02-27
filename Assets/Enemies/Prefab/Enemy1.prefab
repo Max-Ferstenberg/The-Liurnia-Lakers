@@ -50,15 +50,12 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 18ebdad9b6c21ee41bb983a73ee68e91, type: 3}
       propertyPath: m_Name
-      value: Ch25_nonPBR
+      value: Enemy1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 18ebdad9b6c21ee41bb983a73ee68e91, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 4764658883656924020}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 18ebdad9b6c21ee41bb983a73ee68e91, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3331176491856815838}
@@ -74,29 +71,6 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 18ebdad9b6c21ee41bb983a73ee68e91, type: 3}
   m_PrefabInstance: {fileID: 1786449366817195123}
   m_PrefabAsset: {fileID: 0}
---- !u!136 &4764658883656924020
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1444485505697806626}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.3
-  m_Height: 2
-  m_Direction: 1
-  m_Center: {x: 0, y: 1, z: 0}
 --- !u!54 &3331176491856815838
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -136,15 +110,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3cddaf981adfd2d45bc8a13c3f387b47, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  approachSpeed: 1.5
-  strafeSpeed: 0.75
-  retreatSpeed: 0.75
-  rotationSpeed: 4
   attackDistance: 1
   approachDuration: 2
   strafeTime: 1
   retreatTime: 1.5
   attackCooldown: 3
+  stunDuration: 5
+  enemyAudioSource: {fileID: 0}
+  stunSound: {fileID: 0}
+  hoop: {fileID: 0}
+  navUpdateInterval: 0.1
 --- !u!95 &7696956101808384089
 Animator:
   serializedVersion: 7

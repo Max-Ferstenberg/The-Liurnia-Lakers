@@ -1,64 +1,80 @@
 using UnityEngine;
-using System.Collections.Generic;
+using UnityEngine.AI;
 
 public class EnemyAI : MonoBehaviour
 {
-    // Existing movement parameters
-    public float approachSpeed = 1.5f;
-    public float strafeSpeed = 0.75f;
-    public float retreatSpeed = 0.75f;
-    public float rotationSpeed = 3f;
-
-    public float attackDistance = 1f;
-    public float approachDuration = 2f;
-    public float strafeTime = 1f;
-    public float retreatTime = 1.5f;
+    // Movement & combat parameters
+    public float aggroRange = 10f;         // Enemy becomes active within this range.
+    public float attackDistance = 2f;
     public float attackCooldown = 3.0f;
+    public float attackDuration = 0.5f; // how long the attack state lasts
 
-    public AudioSource enemyAudioSource;
-    public AudioClip stunSound;
+    // Two attack points for hit detection.
+    public Transform attackPoint1;
+    public Transform attackPoint2;
+    public float attackRadius = 0.5f;    // radius of the hit detection sphere
+    public float attackDamage = 20f;
+    public float attackPointZOffset = 0.5f; // offset applied in the forward direction
 
-    // New boid parameters
-    public float boidNeighborRadius = 3f;
-    public float boidSeparationDistance = 1.5f;
-    public float boidSeparationWeight = 1.0f;
-    public float boidAlignmentWeight = 0.5f;
-    public float boidCohesionWeight = 0.5f;
-
-    public Rigidbody rb; // Made public so other instances can read velocity
+    private NavMeshAgent navAgent;
     private Animator anim;
     private Transform player;
 
-    private float stateTimer;
     private float attackTimer;
-    private float strafeDirSign = 1f;
     private bool attackTriggered = false;
 
-    private enum State { Approach, Strafe, Retreat, Attack, Stunned }
+    private enum State { Idle, Approach, Attack, Stunned }
     private State currentState;
 
     private bool stunned = false;
     public float stunDuration = 5f;
     private float stunTimer = 0f;
 
+    private float attackStateTimer = 0f;  // timer for how long we remain in the Attack state
+    private Vector3 attackDirection;      // locked attack direction
+    private bool damageApplied = false;
+
+    public AudioSource enemyAudioSource;
+    public AudioClip stunSound;
     public GameObject hoop;
+
+    // Throttling NavMesh updates
+    public float navUpdateInterval = 0.1f;
+    private float navUpdateTimer = 0f;
+    private Vector3 smoothedVelocity = Vector3.zero;
 
     void Start()
     {
-        rb = GetComponent<Rigidbody>();
+        navAgent = GetComponent<NavMeshAgent>();
         anim = GetComponent<Animator>();
 
-        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        // Ensure the NavMeshAgent controls movement
+        navAgent.updatePosition = true;
+        navAgent.updateRotation = true;
+        // Set explicit parameters (adjust as needed in Inspector)
+        navAgent.speed = 5f;
+        navAgent.acceleration = 8f;
+        navAgent.angularSpeed = 120f;
+        navAgent.stoppingDistance = 0.1f;
 
+        // Find player
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
         if (playerObj != null)
             player = playerObj.transform;
         else
             Debug.LogError("Player not found! Make sure your player GameObject is tagged as 'Player'.");
 
-        currentState = State.Approach;
-        stateTimer = approachDuration;
+        // Initialize state to Idle
+        currentState = State.Idle;
         attackTimer = 0f;
+
+        // If using a Rigidbody for collisions, ensure it's kinematic
+        Rigidbody rb = GetComponent<Rigidbody>();
+        if (rb)
+            rb.isKinematic = true;
+
+        // Ensure Animator Root Motion is off (so NavMeshAgent movement isn't overridden)
+        anim.applyRootMotion = false;
     }
 
     void Update()
@@ -66,121 +82,191 @@ public class EnemyAI : MonoBehaviour
         if (player == null)
             return;
 
+        // Check if the player is within aggro range.
+        float distance = Vector3.Distance(transform.position, player.position);
+        if (distance > aggroRange)
+        {
+            currentState = State.Idle;
+            attackTriggered = false;
+            // Optionally, update animator to show idle behavior.
+            anim.SetFloat("Vertical", 0f);
+            anim.SetFloat("Horizontal", 0f);
+            return;
+        }
+        else
+        {
+            // Player is within aggro range: switch to Approach if not attacking.
+            if (currentState == State.Idle)
+                currentState = State.Approach;
+        }
+
         if (stunned)
         {
             stunTimer -= Time.deltaTime;
             BasketballHoop hoopScript = hoop.GetComponent<BasketballHoop>();
-            if (stunTimer <= 0 && hoopScript.dunking == false)
+            if (stunTimer <= 0 && !hoopScript.dunking)
             {
                 stunned = false;
                 currentState = State.Approach;
-                stateTimer = approachDuration;
                 anim.SetBool("IsStunned", false);
                 hoop.SetActive(false);
             }
             return;
         }
 
-        stateTimer -= Time.deltaTime;
+        // Update the cooldown timer
         attackTimer -= Time.deltaTime;
 
-        float distance = Vector3.Distance(transform.position, player.position);
-
-        switch (currentState)
+        // --- State Transitions ---
+        if (currentState == State.Attack)
         {
-            case State.Approach:
-                if (distance <= attackDistance && attackTimer <= 0)
-                {
-                    currentState = State.Attack;
-                    stateTimer = 0.5f;
-                    attackTriggered = false;
-                }
-                else if (stateTimer <= 0)
-                {
-                    if (Random.Range(0, 2) == 0)
-                    {
-                        currentState = State.Strafe;
-                        stateTimer = strafeTime;
-                        strafeDirSign = Random.value < 0.5f ? 1f : -1f;
-                    }
-                    else
-                    {
-                        currentState = State.Retreat;
-                        stateTimer = retreatTime;
-                    }
-                }
-                break;
-
-            case State.Strafe:
-                if (stateTimer <= 0)
-                {
-                    currentState = State.Approach;
-                    stateTimer = approachDuration;
-                }
-                break;
-
-            case State.Retreat:
-                if (stateTimer <= 0)
-                {
-                    currentState = State.Approach;
-                    stateTimer = approachDuration;
-                }
-                break;
-
-            case State.Attack:
-                if (!attackTriggered)
-                {
-                    int attackIndex = Random.Range(1, 4);
-                    switch (attackIndex)
-                    {
-                        case 1:
-                            anim.SetTrigger("Attack1");
-                            break;
-                        case 2:
-                            anim.SetTrigger("Attack2");
-                            break;
-                        case 3:
-                            anim.SetTrigger("Attack3");
-                            break;
-                    }
-                    attackTriggered = true;
-                    Debug.Log("Enemy attacks! Attack " + attackIndex);
-                }
-                if (stateTimer <= 0)
-                {
-                    attackTimer = attackCooldown;
-                    currentState = State.Approach;
-                    stateTimer = approachDuration;
-                }
-                break;
+            // While attacking, count down the attack state duration
+            attackStateTimer -= Time.deltaTime;
+            if (attackStateTimer <= 0f)
+            {
+                currentState = State.Approach;
+                attackTriggered = false;
+            }
+        }
+        else if (distance <= attackDistance && attackTimer <= 0)
+        {
+            if (!attackTriggered)
+            {
+                // Lock in attack direction toward the player.
+                attackDirection = (player.position - transform.position).normalized;
+                int attackIndex = Random.Range(1, 4);
+                anim.SetTrigger("Attack" + attackIndex);
+                attackTriggered = true;
+                damageApplied = false;  // Reset damage flag for this attack
+                attackTimer = attackCooldown;    // start the cooldown
+                attackStateTimer = attackDuration; // remain in attack state for this duration
+                Debug.Log("Enemy attacks! Attack " + attackIndex);
+            }
+            currentState = State.Attack;
+        }
+        else
+        {
+            currentState = State.Approach;
+            attackTriggered = false;
         }
 
-        // Set animation parameters (unchanged)
+        // --- Animator Updates ---
         float dampTime = 0.2f;
-        switch (currentState)
+        if (currentState == State.Approach)
         {
-            case State.Approach:
-                anim.SetFloat("Vertical", 1f, dampTime, Time.deltaTime);
-                anim.SetFloat("Horizontal", 0f, dampTime, Time.deltaTime);
-                break;
-            case State.Strafe:
-                anim.SetFloat("Vertical", 0f, dampTime, Time.deltaTime);
-                anim.SetFloat("Horizontal", (strafeDirSign > 0 ? 1f : -1f), dampTime, Time.deltaTime);
-                break;
-            case State.Retreat:
-                anim.SetFloat("Vertical", -1f, dampTime, Time.deltaTime);
-                anim.SetFloat("Horizontal", 0f, dampTime, Time.deltaTime);
-                break;
-            case State.Attack:
-                anim.SetFloat("Vertical", 0f, dampTime, Time.deltaTime);
-                anim.SetFloat("Horizontal", 0f, dampTime, Time.deltaTime);
-                break;
-            case State.Stunned:
-                anim.SetFloat("Vertical", 0f, dampTime, Time.deltaTime);
-                anim.SetFloat("Horizontal", 0f, dampTime, Time.deltaTime);
-                break;
+            anim.SetFloat("Vertical", 1f, dampTime, Time.deltaTime);
+            anim.SetFloat("Horizontal", 0f, dampTime, Time.deltaTime);
+        }
+        else if (currentState == State.Attack)
+        {
+            anim.SetFloat("Vertical", 0f, dampTime, Time.deltaTime);
+            anim.SetFloat("Horizontal", 0f, dampTime, Time.deltaTime);
+        }
+        else if (currentState == State.Idle)
+        {
+            anim.SetFloat("Vertical", 0f, dampTime, Time.deltaTime);
+            anim.SetFloat("Horizontal", 0f, dampTime, Time.deltaTime);
+        }
+    }
+
+    void FixedUpdate()
+    {
+        if (player == null || stunned)
+            return;
+
+        navUpdateTimer -= Time.fixedDeltaTime;
+        if (navUpdateTimer > 0)
+            return;
+        navUpdateTimer = navUpdateInterval;
+
+        // Only move if not idle.
+        if (currentState == State.Approach)
+        {
+            Vector3 targetPosition = player.position;
+            navAgent.SetDestination(targetPosition);
+        }
+        else if (currentState == State.Attack)
+        {
+            // During attack, lock on: keep destination at current position.
+            navAgent.SetDestination(transform.position);
+        }
+        else if (currentState == State.Idle)
+        {
+            // If idle, remain in place.
+            navAgent.SetDestination(transform.position);
         }
 
+        // Smooth out movement
+        float smoothingFactor = 10f;
+        smoothedVelocity = Vector3.Lerp(smoothedVelocity, navAgent.desiredVelocity, Time.fixedDeltaTime * smoothingFactor);
+        float speedMultiplier = 5f;
+        Vector3 movement = smoothedVelocity * Time.fixedDeltaTime * speedMultiplier;
+
+        // Use NavMeshAgent.Move() for manual movement.
+        navAgent.Move(movement);
+
+        // If attacking, force rotation to lock on to the attack direction.
+        if (currentState == State.Attack)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(attackDirection);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 10f * Time.fixedDeltaTime);
+        }
+    }
+
+    // This method is called via an Animation Event at the appropriate frame.
+    public void DealDamage()
+    {
+        if (damageApplied)
+            return; // Already applied damage this attack
+
+        bool hitPlayer = false;
+        
+        // Check Attack Point 1
+        if (attackPoint1 != null)
+        {
+            Vector3 adjustedAttackPos1 = attackPoint1.position + transform.forward * attackPointZOffset;
+            Collider[] hits1 = Physics.OverlapSphere(adjustedAttackPos1, attackRadius);
+            foreach (Collider hit in hits1)
+            {
+                if (hit.CompareTag("Player"))
+                {
+                    PlayerMovement pm = hit.GetComponent<PlayerMovement>();
+                    if (pm != null)
+                    {
+                        pm.TakeDamage(attackDamage, null);
+                        hitPlayer = true;
+                        Debug.Log("Damage dealt to player from " + attackPoint1.name);
+                        break; // Only one instance of damage per attack
+                    }
+                }
+            }
+        }
+        
+        // If not yet hit from attackPoint1, check Attack Point 2
+        if (!hitPlayer && attackPoint2 != null)
+        {
+            Vector3 adjustedAttackPos2 = attackPoint2.position + transform.forward * attackPointZOffset;
+            Collider[] hits2 = Physics.OverlapSphere(adjustedAttackPos2, attackRadius);
+            foreach (Collider hit in hits2)
+            {
+                if (hit.CompareTag("Player"))
+                {
+                    PlayerMovement pm = hit.GetComponent<PlayerMovement>();
+                    if (pm != null)
+                    {
+                        pm.TakeDamage(attackDamage, null);
+                        hitPlayer = true;
+                        Debug.Log("Damage dealt to player from " + attackPoint2.name);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (hitPlayer)
+        {
+            damageApplied = true;
+        }
     }
 
     private void OnCollisionEnter(Collision collision)
@@ -188,7 +274,7 @@ public class EnemyAI : MonoBehaviour
         if (collision.gameObject.CompareTag("Basketball"))
         {
             BallDribble ballDribble = collision.gameObject.GetComponent<BallDribble>();
-            if (ballDribble != null && ballDribble.isHeld == false && ballDribble.lockedToHand == false && ballDribble.isDribbling == false)
+            if (ballDribble != null && !ballDribble.isHeld && !ballDribble.lockedToHand && !ballDribble.isDribbling)
             {
                 Stun();
             }
@@ -198,9 +284,6 @@ public class EnemyAI : MonoBehaviour
     public void Stun()
     {
         enemyAudioSource.PlayOneShot(stunSound);
-        rb.linearVelocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
-        rb.constraints = RigidbodyConstraints.FreezeAll;
         stunned = true;
         stunTimer = stunDuration;
         currentState = State.Stunned;
@@ -213,92 +296,19 @@ public class EnemyAI : MonoBehaviour
         Destroy(gameObject);
     }
 
-
-    void FixedUpdate()
+    void OnDrawGizmosSelected()
     {
-        if (player == null || stunned)
-            return;
-
-        // Rotate to face the player as before
-        Vector3 directionToPlayer = (player.position - transform.position).normalized;
-        Quaternion targetRotation = Quaternion.LookRotation(directionToPlayer);
-        rb.MoveRotation(Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.fixedDeltaTime));
-
-        // Determine movement based on state
-        Vector3 movement = Vector3.zero;
-        switch (currentState)
+        if (attackPoint1 != null)
         {
-            case State.Approach:
-                movement = directionToPlayer * approachSpeed;
-                break;
-            case State.Strafe:
-                Vector3 strafeDirection = Vector3.Cross(directionToPlayer, Vector3.up) * strafeDirSign;
-                movement = strafeDirection.normalized * strafeSpeed;
-                break;
-            case State.Retreat:
-                movement = -directionToPlayer * retreatSpeed;
-                break;
-            case State.Attack:
-                movement = Vector3.zero;
-                break;
-            case State.Stunned:
-                movement = Vector3.zero;
-                break;
+            Gizmos.color = Color.red;
+            Vector3 adjustedAttackPos1 = attackPoint1.position + transform.forward * attackPointZOffset;
+            Gizmos.DrawWireSphere(adjustedAttackPos1, attackRadius);
         }
-
-        // Compute boid forces from nearby enemies
-        Vector3 boidForce = Boid();
-        movement += boidForce; // blend boid force with current state movement
-
-        // Move enemy based on the combined vector
-        rb.MovePosition(rb.position + movement * Time.fixedDeltaTime);
-    }
-
-    Vector3 Boid()
-    {
-        Vector3 separation = Vector3.zero;
-        Vector3 alignment = Vector3.zero;
-        Vector3 cohesion = Vector3.zero;
-        int count = 0;
-
-        // Look for other enemies in the neighborhood.
-        Collider[] colliders = Physics.OverlapSphere(transform.position, boidNeighborRadius);
-        foreach (Collider col in colliders)
+        if (attackPoint2 != null)
         {
-            if (col.gameObject == this.gameObject)
-                continue;
-
-            // Check if the other object has an EnemyAI script.
-            EnemyAI otherEnemy = col.GetComponent<EnemyAI>();
-            if (otherEnemy != null)
-            {
-                count++;
-                Vector3 diff = transform.position - otherEnemy.transform.position;
-                float dist = diff.magnitude;
-                if (dist < boidSeparationDistance && dist > 0)
-                {
-                    separation += diff.normalized / dist;
-                }
-                // Use the other enemy's current velocity for alignment.
-                alignment += otherEnemy.rb.linearVelocity;
-                // For cohesion, add the neighbor's position.
-                cohesion += otherEnemy.transform.position;
-            }
+            Gizmos.color = Color.blue;
+            Vector3 adjustedAttackPos2 = attackPoint2.position + transform.forward * attackPointZOffset;
+            Gizmos.DrawWireSphere(adjustedAttackPos2, attackRadius);
         }
-
-        if (count > 0)
-        {
-            separation /= count;
-            alignment /= count;
-            cohesion /= count;
-            cohesion = (cohesion - transform.position);
-        }
-
-        // Weight the forces
-        Vector3 force = (boidSeparationWeight * separation) +
-                        (boidAlignmentWeight * alignment) +
-                        (boidCohesionWeight * cohesion);
-
-        return force;
     }
 }
