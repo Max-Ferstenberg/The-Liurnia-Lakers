@@ -36,8 +36,6 @@ public class EnemyAI : MonoBehaviour
     private Vector3 attackDirection;     
     private bool damageApplied = false;
 
-    public AudioSource enemyAudioSource;
-    public AudioClip stunSound;
     private GameObject hoop;
 
     public float navUpdateInterval = 0.1f; 
@@ -132,7 +130,6 @@ public class EnemyAI : MonoBehaviour
                 attackTriggered = true;
                 damageApplied = false;  //ensure damage is only applied once to player
                 attackTimer = attackCooldown;
-                attackStateTimer = attackDuration; 
             }
             currentState = State.Attack;
         }
@@ -309,21 +306,5 @@ public class EnemyAI : MonoBehaviour
             yield return null;
         }
         Destroy(gameObject);
-    }
-
-    void FixedUpdate()
-    {
-        if (attackPoint1 != null)
-        {
-            Gizmos.color = Color.red;
-            Vector3 adjustedAttackPos1 = attackPoint1.position + transform.forward * attackPointZOffset;
-            Gizmos.DrawWireSphere(adjustedAttackPos1, attackRadius);
-        }
-        if (attackPoint2 != null)
-        {
-            Gizmos.color = Color.blue;
-            Vector3 adjustedAttackPos2 = attackPoint2.position + transform.forward * attackPointZOffset;
-            Gizmos.DrawWireSphere(adjustedAttackPos2, attackRadius);
-        }
     }
 }
